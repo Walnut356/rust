@@ -540,7 +540,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                 // problems inspecting other value types. Since DISCR_* is typically only going to be
                 // directly inspected via the debugger visualizer - which compares it to the `tag` value
                 // (whose type is not modified at all) it shouldn't cause any real problems.
-                let (t_di, align) = if name == "NAME" {
+                let (t_di, align) = if name == ASSOC_CONST_DISCR_NAME {
                     (type_di_node_, align.bits() as u32)
                 } else {
                     let ty_u64 = Ty::new_uint(cx.tcx, ty::UintTy::U64);
