@@ -16,7 +16,6 @@ use rustc_span::symbol::Symbol;
 use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
-use crate::mir;
 use crate::ty::fold::fold_regions;
 use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 
@@ -350,21 +349,4 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [(ConstValue<'tcx>, Ty<'tcx>)],
-}
-
-/// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
-/// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
-/// have had a chance to potentially remove some of them.
-///
-/// Used by the `coverage_ids_info` query.
-#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
-pub struct CoverageIdsInfo {
-    /// Coverage codegen needs to know the highest counter ID that is ever
-    /// incremented within a function, so that it can set the `num-counters`
-    /// argument of the `llvm.instrprof.increment` intrinsic.
-    ///
-    /// This may be less than the highest counter ID emitted by the
-    /// InstrumentCoverage MIR pass, if the highest-numbered counter increments
-    /// were removed by MIR optimizations.
-    pub max_counter_id: mir::coverage::CounterId,
 }

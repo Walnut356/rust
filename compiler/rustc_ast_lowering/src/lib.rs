@@ -889,7 +889,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
+            &AttrArgs::Eq { eq_span, ref value } => {
+                let expr = value.unwrap_ast();
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
                 let lit = if let ExprKind::Lit(token_lit) = expr.kind
@@ -905,10 +906,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: DUMMY_SP,
                     }
                 };
-                AttrArgs::Eq(*eq_span, AttrArgsEq::Hir(lit))
-            }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when lowering mac args eq: {:?}", lit)
+                AttrArgs::Eq { eq_span, value: AttrArgsEq::Hir(lit) }
             }
         }
     }
@@ -1257,9 +1255,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                 ))
             }
-            TyKind::Array(ty, length) => {
-                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length))
-            }
+            TyKind::Array(ty, length) => hir::TyKind::Array(
+                self.lower_ty(ty, itctx),
+                self.lower_array_length_to_const_arg(length),
+            ),
             TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const_to_anon_const(expr)),
             TyKind::TraitObject(bounds, kind) => {
                 let mut lifetime_bound = None;
@@ -2007,14 +2006,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.expr_block(block)
     }
 
-    fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen<'hir> {
+    fn lower_array_length_to_const_arg(&mut self, c: &AnonConst) -> &'hir hir::ConstArg<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer() {
-                    hir::ArrayLen::Infer(hir::InferArg {
-                        hir_id: self.lower_node_id(c.id),
-                        span: self.lower_span(c.value.span),
-                    })
+                    let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span));
+                    self.arena
+                        .alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
                 } else {
                     feature_err(
                         &self.tcx.sess,
@@ -2023,10 +2021,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         fluent_generated::ast_lowering_underscore_array_length_unstable,
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
-                    hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c))
+                    self.lower_anon_const_to_const_arg(c)
                 }
             }
-            _ => hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c)),
+            _ => self.lower_anon_const_to_const_arg(c),
         }
     }
 
