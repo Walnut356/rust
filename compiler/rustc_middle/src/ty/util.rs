@@ -172,6 +172,24 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Checks whether `ty: Copy` holds while ignoring region constraints.
+    ///
+    /// This impacts whether values of `ty` are *moved* or *copied*
+    /// when referenced. This means that we may generate MIR which
+    /// does copies even when the type actually doesn't satisfy the
+    /// full requirements for the `Copy` trait (cc #29149) -- this
+    /// winds up being reported as an error during NLL borrow check.
+    ///
+    /// This function should not be used if there is an `InferCtxt` available.
+    /// Use `InferCtxt::type_is_copy_modulo_regions` instead.
+    pub fn type_is_copy_modulo_regions(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        ty.is_trivially_pure_clone_copy() || self.is_copy_raw(typing_env.as_query_input(ty))
+    }
+
     /// Returns the deeply last field of nested structures, or the same type if
     /// not a structure at all. Corresponds to the only possible unsized field,
     /// and its type can be used to determine unsizing strategy.
@@ -1174,21 +1192,6 @@ impl<'tcx> Ty<'tcx> {
             .map(|(min, _)| ty::Const::from_bits(tcx, min, typing_env, self))
     }
 
-    /// Checks whether values of this type `T` are *moved* or *copied*
-    /// when referenced -- this amounts to a check for whether `T:
-    /// Copy`, but note that we **don't** consider lifetimes when
-    /// doing this check. This means that we may generate MIR which
-    /// does copies even when the type actually doesn't satisfy the
-    /// full requirements for the `Copy` trait (cc #29149) -- this
-    /// winds up being reported as an error during NLL borrow check.
-    pub fn is_copy_modulo_regions(
-        self,
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-    ) -> bool {
-        self.is_trivially_pure_clone_copy() || tcx.is_copy_raw(typing_env.as_query_input(self))
-    }
-
     /// Checks whether values of this type `T` have a size known at
     /// compile time (i.e., whether `T: Sized`). Lifetimes are ignored
     /// for the purposes of this check, so it can be an
@@ -1282,6 +1285,15 @@ impl<'tcx> Ty<'tcx> {
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+        }
+    }
+
+    /// Checks whether this type is an ADT that has unsafe fields.
+    pub fn has_unsafe_fields(self) -> bool {
+        if let ty::Adt(adt_def, ..) = self.kind() {
+            adt_def.all_fields().any(|x| x.safety == hir::Safety::Unsafe)
+        } else {
+            false
         }
     }
 

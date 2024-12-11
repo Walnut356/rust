@@ -2445,7 +2445,7 @@ macro_rules! uint_impl {
             //   to generate optimal code for now, and LLVM doesn't have an equivalent intrinsic
             let (a, b) = self.overflowing_sub(rhs);
             let (c, d) = a.overflowing_sub(borrow as $SelfT);
-            (c, b || d)
+            (c, b | d)
         }
 
         /// Calculates `self` - `rhs` with a signed `rhs`
@@ -3162,7 +3162,6 @@ macro_rules! uint_impl {
         #[inline]
         #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                    reason = "needs decision on wrapping behavior")]
-        #[rustc_const_unstable(feature = "wrapping_next_power_of_two", issue = "32463")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn wrapping_next_power_of_two(self) -> Self {

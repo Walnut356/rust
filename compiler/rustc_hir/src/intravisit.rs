@@ -343,9 +343,6 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_field(&mut self, f: &'v PatField<'v>) -> Self::Result {
         walk_pat_field(self, f)
     }
-    fn visit_array_length(&mut self, len: &'v ArrayLen<'v>) -> Self::Result {
-        walk_array_len(self, len)
-    }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
         walk_anon_const(self, c)
     }
@@ -710,14 +707,6 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
     visitor.visit_pat(field.pat)
 }
 
-pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen<'v>) -> V::Result {
-    match len {
-        // FIXME: Use `visit_infer` here.
-        ArrayLen::Infer(InferArg { hir_id, span: _ }) => visitor.visit_id(*hir_id),
-        ArrayLen::Body(c) => visitor.visit_const_arg(c),
-    }
-}
-
 pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonConst) -> V::Result {
     try_visit!(visitor.visit_id(constant.hir_id));
     visitor.visit_nested_body(constant.body)
@@ -739,6 +728,7 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     match &const_arg.kind {
         ConstArgKind::Path(qpath) => visitor.visit_qpath(qpath, const_arg.hir_id, qpath.span()),
         ConstArgKind::Anon(anon) => visitor.visit_anon_const(*anon),
+        ConstArgKind::Infer(..) => V::Result::output(),
     }
 }
 
@@ -753,12 +743,15 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         }
         ExprKind::Repeat(ref element, ref count) => {
             try_visit!(visitor.visit_expr(element));
-            try_visit!(visitor.visit_array_length(count));
+            try_visit!(visitor.visit_const_arg(count));
         }
         ExprKind::Struct(ref qpath, fields, ref optional_base) => {
             try_visit!(visitor.visit_qpath(qpath, expression.hir_id, expression.span));
             walk_list!(visitor, visit_expr_field, fields);
-            visit_opt!(visitor, visit_expr, optional_base);
+            match optional_base {
+                StructTailExpr::Base(base) => try_visit!(visitor.visit_expr(base)),
+                StructTailExpr::None | StructTailExpr::DefaultFields(_) => {}
+            }
         }
         ExprKind::Tup(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
@@ -901,7 +894,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
         }
         TyKind::Array(ref ty, ref length) => {
             try_visit!(visitor.visit_ty(ty));
-            try_visit!(visitor.visit_array_length(length));
+            try_visit!(visitor.visit_const_arg(length));
         }
         TyKind::TraitObject(bounds, ref lifetime, _syntax) => {
             for bound in bounds {
@@ -1200,10 +1193,14 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(
     V::Result::output()
 }
 
-pub fn walk_field_def<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v FieldDef<'v>) -> V::Result {
-    try_visit!(visitor.visit_id(field.hir_id));
-    try_visit!(visitor.visit_ident(field.ident));
-    visitor.visit_ty(field.ty)
+pub fn walk_field_def<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    FieldDef { hir_id, ident, ty, default, span: _, vis_span: _, def_id: _, safety: _ }: &'v FieldDef<'v>,
+) -> V::Result {
+    try_visit!(visitor.visit_id(*hir_id));
+    try_visit!(visitor.visit_ident(*ident));
+    visit_opt!(visitor, visit_anon_const, default);
+    visitor.visit_ty(*ty)
 }
 
 pub fn walk_enum_def<'v, V: Visitor<'v>>(
