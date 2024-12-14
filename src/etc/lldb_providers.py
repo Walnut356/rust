@@ -3,7 +3,6 @@ import sys
 from lldb import (
     SBData,
     SBError,
-    SBType,
     SBValue,
     eBasicTypeLong,
     eBasicTypeUnsignedLong,
