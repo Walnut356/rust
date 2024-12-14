@@ -5,11 +5,11 @@ from rust_types import RustType, classify_struct, classify_union
 
 
 # BACKCOMPAT: rust 1.35
-def is_hashbrown_hashmap(hash_map):
+def is_hashbrown_hashmap(hash_map) -> bool:
     return len(hash_map.type.fields) == 1
 
 
-def classify_rust_type(type):
+def classify_rust_type(type: lldb.SBType) -> str:
     type_class = type.GetTypeClass()
     if type_class == lldb.eTypeClassStruct:
         return classify_struct(type.name, type.fields)
@@ -19,8 +19,7 @@ def classify_rust_type(type):
     return RustType.OTHER
 
 
-def summary_lookup(valobj, dict):
-    # type: (SBValue, dict) -> str
+def summary_lookup(valobj: lldb.SBValue, dict) -> str:
     """Returns the summary provider for the given value"""
     rust_type = classify_rust_type(valobj.GetType())
 
@@ -66,8 +65,7 @@ def summary_lookup(valobj, dict):
     return ""
 
 
-def synthetic_lookup(valobj, dict):
-    # type: (SBValue, dict) -> object
+def synthetic_lookup(valobj: SBValue, dict) -> object:
     """Returns the synthetic provider for the given value"""
     rust_type = classify_rust_type(valobj.GetType())
 
