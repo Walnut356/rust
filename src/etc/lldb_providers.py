@@ -108,7 +108,7 @@ class EmptySyntheticProvider:
         return 0
 
     def get_child_index(self, name: str) -> int:
-        return None
+        return -1
 
     def get_child_at_index(self, index: int) -> SBValue:
         return None
