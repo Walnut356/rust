@@ -1,5 +1,4 @@
 from __future__ import annotations
-import re
 import sys
 from typing import List, TYPE_CHECKING
 
@@ -417,8 +416,12 @@ def _getVariantName(variant) -> str:
     we can extract `TheVariantName` from it for display purpose.
     """
     s = variant.GetType().GetName()
-    match = re.search(r"::([^:]+)\$Variant$", s)
-    return match.group(1) if match else ""
+    if not s.endswith("$Variant"):
+        return ""
+
+    # trim off path and "$Variant"
+    # len("$Variant") == 8
+    return s.rsplit("::", 1)[1][:-8]
 
 
 class ClangEncodedEnumProvider:
