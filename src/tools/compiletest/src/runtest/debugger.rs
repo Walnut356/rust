@@ -27,8 +27,9 @@ impl DebuggerCommands {
         debugger_prefix: &str,
         test_revision: Option<&str>,
     ) -> Result<Self, String> {
-        let command_directive = format!("{debugger_prefix}-command");
-        let check_directive = format!("{debugger_prefix}-check");
+        // let command_directive = format!("{debugger_prefix}-command");
+        // let check_directive = format!("{debugger_prefix}-check");
+        // let repr_directive = format!("{debugger_prefix}-repr");
 
         let mut breakpoint_lines = vec![];
         let mut commands = vec![];
@@ -51,16 +52,30 @@ impl DebuggerCommands {
                 continue;
             }
 
-            if directive.name == command_directive
-                && let Some(command) = directive.value_after_colon()
-            {
-                commands.push(command.to_string());
+            let Some(directive_kind) = directive.name.strip_prefix(debugger_prefix) else {
+                continue
+            };
+
+            match (directive_kind, directive.value_after_colon()) {
+                ("-command", Some(command)) => commands.push(command.to_string()),
+                ("-check", Some(pattern)) => check_lines.push((line_number, pattern.to_string())),
+                ("-repr", Some(var_name)) => {
+                    commands.push(format!("repr {var_name}"));
+                    check_lines.push((line_number, format!("{var_name}: Ok")));
+                },
+                _ => continue,
             }
-            if directive.name == check_directive
-                && let Some(pattern) = directive.value_after_colon()
-            {
-                check_lines.push((line_number, pattern.to_string()));
-            }
+
+            // if directive.name == command_directive
+            //     && let Some(command) = directive.value_after_colon()
+            // {
+            //     commands.push(command.to_string());
+            // }
+            // if directive.name == check_directive
+            //     && let Some(pattern) = directive.value_after_colon()
+            // {
+            //     check_lines.push((line_number, pattern.to_string()));
+            // }
         }
 
         Ok(Self {

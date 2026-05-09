@@ -21,6 +21,8 @@ import threading
 import re
 import time
 
+import lldb_test
+
 try:
     import thread
 except ModuleNotFoundError:
@@ -243,6 +245,9 @@ def main():
                 # Before starting to run the program, let the thread sleep a bit, so all
                 # breakpoint added events can be processed
                 time.sleep(0.5)
+            if command.startswith("repr "):
+                var_name = command.split(" ", 1)[1]
+                lldb_test.run(var_name, 0)
             if command != "":
                 execute_command(command_interpreter, command)
 

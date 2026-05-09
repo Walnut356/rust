@@ -407,6 +407,10 @@ impl TestCx<'_> {
             "command script import {}/lldb_lookup.py\n",
             rust_pp_module_abs_path
         ));
+        script_str.push_str(&format!(
+            "command script import {}/lldb_test.py\n",
+            rust_pp_module_abs_path
+        ));
         File::open(rust_pp_module_abs_path.join("lldb_commands"))
             .and_then(|mut file| file.read_to_string(&mut script_str))
             .expect("Failed to read lldb_commands");
@@ -458,11 +462,17 @@ impl TestCx<'_> {
         // make sure `PATH` points to all the dlls necessary to run the debugee
         let path = prepend_to_path(&self.config.target_run_lib_path);
 
+
+        let lldb_input_data_path = self.config.src_root.join(format!("tests/debuginfo/input/{}.json", self.testpaths.file.file_stem().unwrap()));
+
         let mut cmd = Command::new(lldb);
         cmd.arg("--one-line")
             .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
             .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
             .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
+            .env("LLDB_BATHCMODE_INPUT_DATA_PATH", lldb_input_data_path)
+            .env("LLDB_BATCHMODE_BLESS_TEST_DATA",  if self.config.bless {"1"} else {"0"})
+            .env("LLDB_BATCHMODE_TARGET_TRIPLE", self.config.target.clone())
             .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
             .env("PYTHONPATH", pythonpath)
             .env("PATH", path);
