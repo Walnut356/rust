@@ -14,6 +14,7 @@
 # fail. Using this Python script, the above will work as expected.
 
 from __future__ import print_function
+from typing import Optional
 import lldb
 import os
 import sys
@@ -79,6 +80,7 @@ def execute_command(command_interpreter, command):
     print(command)
     command_interpreter.HandleCommand(command, res)
 
+
     if res.Succeeded():
         if res.HasResult():
             print(normalize_whitespace(res.GetOutput() or ""), end="\n")
@@ -99,25 +101,25 @@ def execute_command(command_interpreter, command):
                 print_debug(
                     "registering breakpoint callback, id = " + str(breakpoint_id)
                 )
-                callback_command = (
-                    "breakpoint command add -F breakpoint_callback "
-                    + str(breakpoint_id)
-                )
-                command_interpreter.HandleCommand(callback_command, res)
-                if res.Succeeded():
-                    print_debug(
-                        "successfully registered breakpoint callback, id = "
-                        + str(breakpoint_id)
-                    )
-                    registered_breakpoints.add(breakpoint_id)
-                else:
-                    print(
-                        "Error while trying to register breakpoint callback, id = "
-                        + str(breakpoint_id)
-                        + ", message = "
-                        + str(res.GetError())
-                    )
+                # callback_command = (
+                #     f"breakpoint command add -s python {str(breakpoint_id)} -o 'import lldb_batchmode; lldb_batchmode.breakpoint_callback' "
+                # )
+                # command_interpreter.HandleCommand(callback_command, res)
+                # if res.Succeeded():
+                #     print_debug(
+                #         "successfully registered breakpoint callback, id = "
+                #         + str(breakpoint_id)
+                #     )
+                #     registered_breakpoints.add(breakpoint_id)
+                # else:
+                #     print(
+                #         "Error while trying to register breakpoint callback, id = "
+                #         + str(breakpoint_id)
+                #         + ", message = "
+                #         + str(res.GetError())
+                #     )
     else:
+        print(res.GetOutput())
         print(res.GetError())
 
 
@@ -205,7 +207,7 @@ def main():
     start_watchdog()
 
     # Create a new debugger instance
-    debugger = lldb.SBDebugger.Create()
+    debugger = lldb.debugger
 
     # When we step or continue, don't return from the function until the process
     # stops. We do this by setting the async mode to false.
@@ -214,7 +216,7 @@ def main():
     # Create a target from a file and arch
     print("Creating a target for '%s'" % target_path)
     target_error = lldb.SBError()
-    target = debugger.CreateTarget(target_path, None, None, True, target_error)
+    target: lldb.SBTarget = debugger.CreateTarget(target_path, None, None, True, target_error)
 
     if not target:
         print(
@@ -230,13 +232,34 @@ def main():
     # Register the breakpoint callback for every breakpoint
     start_breakpoint_listener(target)
 
-    command_interpreter = debugger.GetCommandInterpreter()
+    command_interpreter: lldb.SBCommandInterpreter = debugger.GetCommandInterpreter()
+
+    bless = os.environ["LLDB_BATCHMODE_BLESS_TEST_DATA"] == "1"
+
 
     try:
         script_file = open(script_path, "r")
+        breakpoint_index: Optional[int] = None
 
         for line in script_file:
             command = line.strip()
+            if command.startswith("breakpoint set"):
+                # per src\tools\compiletest\src\runtest\debuginfo.rs
+                # breakpoint commands have the structure:
+                # format!("breakpoint set --file '{source_file}' --line {line}\n",)
+                tokens = command.split(" ")
+                file = tokens[3]
+                if file.startswith("'"):
+                    file = file[1:]
+                if file.endswith("'"):
+                    file = file[:-1]
+                file = file.strip()
+
+                line = tokens[5].strip()
+
+                bp = target.BreakpointCreateByLocation(file, int(line))
+                print(bp)
+                continue
             if (
                 command == "run"
                 or command == "r"
@@ -244,11 +267,31 @@ def main():
             ):
                 # Before starting to run the program, let the thread sleep a bit, so all
                 # breakpoint added events can be processed
-                time.sleep(0.5)
+                process = target.LaunchSimple(None, None, None)
+                if process.GetSelectedThread().GetStopReason() == lldb.eStopReasonBreakpoint and breakpoint_index is None:
+                    breakpoint_index = 0
+                continue
+            if command == "continue" or command == "c":
+                process.Continue()
+                print(process.GetSelectedThread().GetStopReason())
+                if process.GetSelectedThread().GetStopReason() == lldb.eStopReasonBreakpoint:
+                    breakpoint_index += 1
+                continue
             if command.startswith("repr "):
                 var_name = command.split(" ", 1)[1]
-                lldb_test.run(var_name, 0)
-            if command != "":
+                # execute_command(command_interpreter, f"script import lldb_test; lldb_test.run({var_name}, 0)")
+                # print(target.GetProcess().selected_thread.selected_frame)
+                p = target.GetProcess()
+                for i in range(p.GetNumThreads()):
+                    if p.GetThreadAtIndex(i).name == "main":
+                        f = p.GetThreadAtIndex(i).GetSelectedFrame()
+                        # print(f.variables)
+                        # lldb.frame = f
+                # lldb.frame = target.GetProcess().GetThreadAtIndex().name.selected_frame
+                        lldb_test.run(var_name, breakpoint_index, f)
+            elif command != "":
+                if command.startswith("breakpoint set"):
+                    assert False
                 execute_command(command_interpreter, command)
 
     except IOError as e:
@@ -256,6 +299,14 @@ def main():
         print(e, file=sys.stderr)
         print("Aborting.", file=sys.stderr)
         sys.exit(1)
+    else:
+        # Executes if the `try` block throws no exceptions.
+        # `bless` should resolve any errors from mismatched test data, so any errors that reach this
+        # point are either from the `bless` not working properly, or some other issue with the test
+        # itself. In either case, we probably don't want to update the test data until those are
+        # resolved.
+        if bless:
+            lldb_test.INPUT_DATA.save_blessing()
     finally:
         script_file.close()
 

@@ -1,0 +1,330 @@
+{
+    "NonWindowsGnu": [],
+    "WindowsGnu": [
+        {
+            "b": {
+                "name": "b",
+                "type": {
+                    "name": "bool",
+                    "pretty_name": "bool",
+                    "size": 1,
+                    "align": 1,
+                    "fields": []
+                },
+                "pretty_print": "false",
+                "value": false,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "i": {
+                "name": "i",
+                "type": {
+                    "name": "long long",
+                    "pretty_name": "long long",
+                    "size": 8,
+                    "align": 8,
+                    "fields": []
+                },
+                "pretty_print": "-1",
+                "value": -1,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "i8": {
+                "name": "i8",
+                "type": {
+                    "name": "char",
+                    "pretty_name": "char",
+                    "size": 1,
+                    "align": 1,
+                    "fields": []
+                },
+                "pretty_print": "'D'",
+                "value": 68,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "i16": {
+                "name": "i16",
+                "type": {
+                    "name": "short",
+                    "pretty_name": "short",
+                    "size": 2,
+                    "align": 2,
+                    "fields": []
+                },
+                "pretty_print": "-16",
+                "value": -16,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "i32": {
+                "name": "i32",
+                "type": {
+                    "name": "int",
+                    "pretty_name": "int",
+                    "size": 4,
+                    "align": 4,
+                    "fields": []
+                },
+                "pretty_print": "-32",
+                "value": -32,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "i64": {
+                "name": "i64",
+                "type": {
+                    "name": "long long",
+                    "pretty_name": "long long",
+                    "size": 8,
+                    "align": 8,
+                    "fields": []
+                },
+                "pretty_print": "-64",
+                "value": -64,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u": {
+                "name": "u",
+                "type": {
+                    "name": "unsigned long long",
+                    "pretty_name": "unsigned long long",
+                    "size": 8,
+                    "align": 8,
+                    "fields": []
+                },
+                "pretty_print": "1",
+                "value": 1,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u8": {
+                "name": "u8",
+                "type": {
+                    "name": "unsigned char",
+                    "pretty_name": "unsigned char",
+                    "size": 1,
+                    "align": 1,
+                    "fields": []
+                },
+                "pretty_print": "'d'",
+                "value": 100,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u16": {
+                "name": "u16",
+                "type": {
+                    "name": "unsigned short",
+                    "pretty_name": "unsigned short",
+                    "size": 2,
+                    "align": 2,
+                    "fields": []
+                },
+                "pretty_print": "16",
+                "value": 16,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u32": {
+                "name": "u32",
+                "type": {
+                    "name": "unsigned int",
+                    "pretty_name": "unsigned int",
+                    "size": 4,
+                    "align": 4,
+                    "fields": []
+                },
+                "pretty_print": "32",
+                "value": 32,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u64": {
+                "name": "u64",
+                "type": {
+                    "name": "unsigned long long",
+                    "pretty_name": "unsigned long long",
+                    "size": 8,
+                    "align": 8,
+                    "fields": []
+                },
+                "pretty_print": "64",
+                "value": 64,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "f32": {
+                "name": "f32",
+                "type": {
+                    "name": "float",
+                    "pretty_name": "float",
+                    "size": 4,
+                    "align": 4,
+                    "fields": []
+                },
+                "pretty_print": "2.5",
+                "value": 2.5,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "f64": {
+                "name": "f64",
+                "type": {
+                    "name": "double",
+                    "pretty_name": "double",
+                    "size": 8,
+                    "align": 8,
+                    "fields": []
+                },
+                "pretty_print": "3.5",
+                "value": 3.5,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            }
+        },
+        {
+            "u": {
+                "name": "u",
+                "type": {
+                    "name": "unsigned long long",
+                    "pretty_name": "unsigned long long",
+                    "size": 8,
+                    "align": 8,
+                    "fields": []
+                },
+                "pretty_print": "1",
+                "value": 1,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u8": {
+                "name": "u8",
+                "type": {
+                    "name": "unsigned char",
+                    "pretty_name": "unsigned char",
+                    "size": 1,
+                    "align": 1,
+                    "fields": []
+                },
+                "pretty_print": "'d'",
+                "value": 100,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u16": {
+                "name": "u16",
+                "type": {
+                    "name": "unsigned short",
+                    "pretty_name": "unsigned short",
+                    "size": 2,
+                    "align": 2,
+                    "fields": []
+                },
+                "pretty_print": "16",
+                "value": 16,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u32": {
+                "name": "u32",
+                "type": {
+                    "name": "unsigned int",
+                    "pretty_name": "unsigned int",
+                    "size": 4,
+                    "align": 4,
+                    "fields": []
+                },
+                "pretty_print": "32",
+                "value": 32,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "u64": {
+                "name": "u64",
+                "type": {
+                    "name": "unsigned long long",
+                    "pretty_name": "unsigned long long",
+                    "size": 8,
+                    "align": 8,
+                    "fields": []
+                },
+                "pretty_print": "64",
+                "value": 64,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "f32": {
+                "name": "f32",
+                "type": {
+                    "name": "float",
+                    "pretty_name": "float",
+                    "size": 4,
+                    "align": 4,
+                    "fields": []
+                },
+                "pretty_print": "2.5",
+                "value": 2.5,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            },
+            "f64": {
+                "name": "f64",
+                "type": {
+                    "name": "double",
+                    "pretty_name": "double",
+                    "size": 8,
+                    "align": 8,
+                    "fields": []
+                },
+                "pretty_print": "3.5",
+                "value": 3.5,
+                "synthetic": "lldb_lookup.synthetic_lookup",
+                "summary": null,
+                "format": null,
+                "children": {}
+            }
+        }
+    ],
+    "WindowsMsvc": []
+}

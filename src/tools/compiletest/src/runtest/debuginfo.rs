@@ -470,7 +470,7 @@ impl TestCx<'_> {
             .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
             .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
             .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
-            .env("LLDB_BATHCMODE_INPUT_DATA_PATH", lldb_input_data_path)
+            .env("LLDB_BATCHMODE_INPUT_DATA_PATH", lldb_input_data_path)
             .env("LLDB_BATCHMODE_BLESS_TEST_DATA",  if self.config.bless {"1"} else {"0"})
             .env("LLDB_BATCHMODE_TARGET_TRIPLE", self.config.target.clone())
             .env("PYTHONUNBUFFERED", "1") // Help debugging #78665

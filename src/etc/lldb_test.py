@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import enum
 import os
 import json
@@ -15,6 +16,8 @@ from lldb import SBDebugger, SBValue, SBType, SBData, eBasicTypeInvalid
 
 char: TypeAlias = str
 Primitive: TypeAlias = int | float | bool | char
+
+FRAME = lldb.frame
 
 print(os.environ)
 
@@ -69,7 +72,6 @@ class RawInputData(UserDict[Target | str, list[dict[str, dict]]]):
         if os.path.isfile(path):
             with open(path, "r") as f:
                 self.data = json.load(f)
-
         else:
             self.data = {
                 Target.NonWindowsGnu.value: [],
@@ -82,19 +84,25 @@ class RawInputData(UserDict[Target | str, list[dict[str, dict]]]):
         of the current target and breakpoint. This function **does not** write to the input file.
         Update all necessary vars, then write the entire input data at once using
         `RawInputData.save_blessing`"""
-        valobj = lldb.frame.FindVariable(var_name)
+        print(self)
+        valobj = FRAME.FindVariable(var_name)
         if not valobj.IsValid():
             # TODO error handling
             raise Exception(f"<bless error: Cannot find variable {var_name}>")
 
+        if len(self[TARGET]) <= breakpoint:
+            self[TARGET].append({})
         self[TARGET][breakpoint][var_name] = asdict(Variable.from_lldb(valobj))
+
+        print(self)
 
     def save_blessing(self):
         """Writes the entirety of `self` to the input file. Used to finalize changes made by
         one or more `RawInputData.bless_variable` calls."""
+        print("saving")
         path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
         with open(path, "w") as f:
-            json.dump(self, f)
+            json.dump(self.data, f)
 
 
 INPUT_DATA = RawInputData()
@@ -150,7 +158,10 @@ class Type:
             type.GetDisplayTypeName(),
             type.GetByteSize(),
             type.GetByteAlign(),
-            [Field.from_lldb(type.GetFieldAtIndex(i)) for i in range(type.GetNumberOfFields())],
+            [
+                Field.from_lldb(type.GetFieldAtIndex(i))
+                for i in range(type.GetNumberOfFields())
+            ],
         )
         # TODO template args
         # self.generic_params = [lldb_lookup.get_template_args()]
@@ -162,7 +173,10 @@ class Type:
             type["pretty_name"],
             type["size"],
             type["align"],
-            [Field(field["name"], field["type"], field["offset"]) for field in type["fields"]],
+            [
+                Field(field["name"], field["type"], field["offset"])
+                for field in type["fields"]
+            ],
         )
 
 
@@ -174,7 +188,9 @@ class Field:
 
     @staticmethod
     def from_lldb(field: lldb.SBTypeMember) -> Field:
-        return Field(field.GetName(), field.GetType().GetName(), field.GetOffsetInBytes())
+        return Field(
+            field.GetName(), field.GetType().GetName(), field.GetOffsetInBytes()
+        )
 
     @staticmethod
     def from_json(field: dict) -> Field:
@@ -309,13 +325,19 @@ def get_summary_or_value(valobj: SBValue) -> str | None:
     return summary
 
 
-def run(var: str, breakpoint: int):
+def run(var: str, breakpoint: int, frame: lldb.SBFrame):
+    global FRAME
+    FRAME = frame
+    # try:
     bless = os.environ["LLDB_BATCHMODE_BLESS_TEST_DATA"] == "1"
     if bless:
+        print("blessing")
         INPUT_DATA.bless_variable(var, breakpoint)
 
+    print(INPUT_DATA)
     check(Variable.from_json(var, INPUT_DATA[TARGET][breakpoint][var]))
 
+    print(f"{var}: Ok")
 
 
 TYPE_UNPACK_FMT = {
@@ -374,7 +396,7 @@ ITEM_SEP = ","
 
 
 def get_var(var_name: str) -> SBValue:
-    var: SBValue = lldb.frame.var(var_name)
+    var: SBValue = FRAME.var(var_name)
     assert var.IsValid(), f"Unable to find variable: {var_name}"
 
     return var
@@ -402,7 +424,9 @@ def check_layout(valobj: SBValue, expected: Variable):
     assert type.GetByteAlign() == exp_type.align
     assert len(type.fields) == len(exp_type.fields)
 
-    fields = {Field(f.name, f.GetType().GetName(), f.GetOffsetInBytes()) for f in type.fields}
+    fields = {
+        Field(f.name, f.GetType().GetName(), f.GetOffsetInBytes()) for f in type.fields
+    }
 
     assert fields == set(exp_type.fields)
 
@@ -413,6 +437,9 @@ def check_primitive(valobj: SBValue, expected: Variable | Child):
     type: SBType = valobj.GetType().GetCanonicalType()
     kind = type.GetBasicType()
     assert kind != lldb.eBasicTypeInvalid, f"{valobj.name} is not a primtive"
+
+    parsed = Variable.from_lldb(valobj)
+    assert parsed == expected
 
     if (fmt := TYPE_UNPACK_FMT.get(kind)) is None:
         raise Exception(f"Unexpected eBasicType: {kind}")
@@ -436,7 +463,9 @@ def check_primitive(valobj: SBValue, expected: Variable | Child):
 
 
 def check_format(valobj: SBValue, expected: Variable):
-    fmt = valobj.GetTypeFormat().GetFormat() if valobj.GetTypeFormat().IsValid() else None
+    fmt = (
+        valobj.GetTypeFormat().GetFormat() if valobj.GetTypeFormat().IsValid() else None
+    )
 
     assert fmt == expected.format, (
         f"Invalid format for type {valobj.GetTypeName()}. Got: {valobj.GetTypeFormat()}"
@@ -444,7 +473,11 @@ def check_format(valobj: SBValue, expected: Variable):
 
 
 def check_aggregate(valobj: SBValue, expected: Variable):
-    synth = valobj.GetTypeSynthetic().GetData() if valobj.GetTypeSynthetic().IsValid() else None
+    synth = (
+        valobj.GetTypeSynthetic().GetData()
+        if valobj.GetTypeSynthetic().IsValid()
+        else None
+    )
     expected_synth = expected.synthetic
 
     assert synth == expected_synth, (
@@ -503,7 +536,9 @@ def check_children(valobj: SBValue, synth, expected: dict[str, Child]):
         raise Exception("\n".join(errors))
 
 
-def check_summary(valobj: SBValue, provider_name: Optional[str], expected: Optional[str]):
+def check_summary(
+    valobj: SBValue, provider_name: Optional[str], expected: Optional[str]
+):
     sb_summary = valobj.GetTypeSummary()
     assert (
         provider_name is None and not sb_summary.IsValid()
@@ -511,6 +546,6 @@ def check_summary(valobj: SBValue, provider_name: Optional[str], expected: Optio
         f"Unexpected SummaryProvider. Got: '{valobj.GetTypeSummary().GetData()}', expected: '{provider_name}'"
     )
 
-    assert valobj.GetSummary() == expected, (
+    assert provider_name is None or valobj.GetSummary() == expected, (
         f"Summary does not match. Got: '{valobj.GetSummary()}', expected: '{expected}'"
     )

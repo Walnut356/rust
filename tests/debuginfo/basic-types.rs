@@ -47,33 +47,20 @@
 // === LLDB TESTS ==================================================================================
 
 //@ lldb-command:run
-//@ lldb-command:v b
-//@ lldb-check:[...] false
-//@ lldb-command:v i
-//@ lldb-check:[...] -1
-
-//@ lldb-command:v i8
-//@ lldb-check:[...] 'D'
-//@ lldb-command:v i16
-//@ lldb-check:[...] -16
-//@ lldb-command:v i32
-//@ lldb-check:[...] -32
-//@ lldb-command:v i64
-//@ lldb-check:[...] -64
-//@ lldb-command:v u
-//@ lldb-check:[...] 1
-//@ lldb-command:v u8
-//@ lldb-check:[...] 'd'
-//@ lldb-command:v u16
-//@ lldb-check:[...] 16
-//@ lldb-command:v u32
-//@ lldb-check:[...] 32
-//@ lldb-command:v u64
-//@ lldb-check:[...] 64
-//@ lldb-command:v f32
-//@ lldb-check:[...] 2.5
-//@ lldb-command:v f64
-//@ lldb-check:[...] 3.5
+//@ lldb-repr:b
+//@ lldb-repr:i
+//@ lldb-repr:i8
+//@ lldb-repr:i16
+//@ lldb-repr:i32
+//@ lldb-repr:i64
+//@ lldb-command:continue
+//@ lldb-repr:u
+//@ lldb-repr:u8
+//@ lldb-repr:u16
+//@ lldb-repr:u32
+//@ lldb-repr:u64
+//@ lldb-repr:f32
+//@ lldb-repr:f64
 
 // === CDB TESTS ===================================================================================
 
@@ -124,7 +111,7 @@ fn main() {
     let i16: i16 = -16;
     let i32: i32 = -32;
     let i64: i64 = -64;
-    let u: usize = 1;
+    let u: usize = 1; // #break
     let u8: u8 = 100;
     let u16: u16 = 16;
     let u32: u32 = 32;
