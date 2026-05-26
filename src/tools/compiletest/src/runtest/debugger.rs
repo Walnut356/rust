@@ -53,7 +53,7 @@ impl DebuggerCommands {
             }
 
             let Some(directive_kind) = directive.name.strip_prefix(debugger_prefix) else {
-                continue
+                continue;
             };
 
             match (directive_kind, directive.value_after_colon()) {
@@ -62,7 +62,7 @@ impl DebuggerCommands {
                 ("-repr", Some(var_name)) => {
                     commands.push(format!("repr {var_name}"));
                     check_lines.push((line_number, format!("{var_name}: Ok")));
-                },
+                }
                 _ => continue,
             }
 

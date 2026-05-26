@@ -9,23 +9,23 @@ import sys
 import enum
 import os
 import json
-import pprint
 
-from collections import UserDict
 from dataclasses import dataclass, asdict, is_dataclass, fields
 from struct import unpack
-from typing import TypeAlias, Optional, Any, Self
+from typing import TypeAlias, Optional, Any
 
 import lldb_lookup
 import lldb
-from lldb import SBDebugger, SBValue, SBType, SBData, eBasicTypeInvalid
+from lldb import SBValue, SBType, SBData, eBasicTypeInvalid
 
 char: TypeAlias = str
 Primitive: TypeAlias = int | float | bool | char
 
 # see: default json decoder docs https://docs.python.org/3/library/json.html#json.JSONDecoder
 # The types we're dealing with can only be: int, str, float, list, dict, bool, and None
-JsonType: TypeAlias = int | str | float | list["JsonType"] | bool | None | dict[str, "JsonType"]
+JsonType: TypeAlias = (
+    int | str | float | list["JsonType"] | bool | None | dict[str, "JsonType"]
+)
 # JsonDict: TypeAlias = dict[str, JsonType]
 
 FRAME = lldb.frame
@@ -96,23 +96,35 @@ def from_dict(ty: type[Any], data: JsonType):
     if is_dataclass(ty):
         assert isinstance(data, dict)
 
-        field_types = {
-            # First we try stripping any generics that may exist and look up the type in the
-            # builtins. This catchs int, float, bool, None, str, list, and dict. If none of those
-            # were found, we look up the type within this module.
-            f.name: f.type
-            for f in fields(ty)
-        }
+        field_types = {f.name: f.type for f in fields(ty)}
 
         # if you've never seen this before, `**` is the splat operator. It expands a mapping type
         # (in this case a dict) to keyword arguments. The ordering of the mapping does not matter,
         # only that the mapping's keys match the functions keyword args, and `len(mapping)` == the
         # number of keyword args.
         try:
-            return ty(**{f: from_dict(field_types[f], data[f]) for f in data})
+            field_map = {}
+
+            for f in data:
+                f_type = field_types[f]
+
+                # type annotations can be strings, so we need to resolve them to their actual type
+                if isinstance(f_type, str):
+                    # First we try stripping any generics that may exist and look up the type in the
+                    # builtins. This catchs int, float, bool, None, str, list, and dict. If none of
+                    # those were found, we look up the type within this module.
+                    f_type = globals().get(f_type) or getattr(
+                        __builtins__, f_type.split("[", 1)[0]
+                    )
+
+                field_map[f] = from_dict(f_type, data[f])
+
+            return ty(**field_map)
         except KeyError as e:
-            print(f"Unable to convert dict to {ty}: Invalid field name {e}. If the test schema was \
-changed intentionally, use the `--bless` option to update test data to the new schema.")
+            print(
+                f"Unable to convert dict to {ty}: Invalid field name {e}. If the test schema was \
+changed intentionally, use the `--bless` option to update test data to the new schema."
+            )
 
     # for any other type, we don't need to do any processing
     return data
@@ -150,7 +162,9 @@ class Field:
 
     @staticmethod
     def from_lldb(field: lldb.SBTypeMember) -> "Field":
-        return Field(field.GetName(), field.GetType().GetName(), field.GetOffsetInBytes())
+        return Field(
+            field.GetName(), field.GetType().GetName(), field.GetOffsetInBytes()
+        )
 
 
 @dataclass(slots=True)
@@ -159,6 +173,8 @@ class Type:
     pretty_name: str
     size: int
     align: int
+    basic_type: int
+    type_class: int
     fields: list[Field]
     # FIXME Rust doesn't output template *values* (the `10` in `ArrayVec<u8, 10>`), only template
     # args (the `u8` in `ArrayVec<u8, 10>`). If that ever changes, we need to update the logic for
@@ -175,15 +191,21 @@ class Type:
             type.GetDisplayTypeName(),
             type.GetByteSize(),
             type.GetByteAlign(),
-            [Field.from_lldb(type.GetFieldAtIndex(i)) for i in range(type.GetNumberOfFields())],
+            type.GetBasicType(),
+            type.GetTypeClass(),
+            [
+                Field.from_lldb(type.GetFieldAtIndex(i))
+                for i in range(type.GetNumberOfFields())
+            ],
         )
-        # TODO template args
+        # FIXME (todo) template args
         # self.generic_params = [lldb_lookup.get_template_args()]
 
 
 @dataclass(slots=True)
 class Child:
-    """Similar to `Variable`, but carries less information since we primarily test top-level values"""
+    """Similar to `Variable`, but carries less information since we primarily test top-level
+    values"""
 
     type: str
     value: Primitive | dict[str, "Child"]
@@ -270,7 +292,7 @@ class BlessMetadata:
 
     python_version: str = ""
     lldb_version: str = ""
-    # TODO
+    # FIXME (todo)
     # lldb_feature_flags: str
 
 
@@ -337,7 +359,6 @@ class TestData:
         """Retrieves data from the target specified by `compiletest`"""
 
         if TARGET == Target.WindowsGnu:
-
             return self.windows_gnu
 
         if TARGET == Target.WindowsMsvc:
@@ -352,7 +373,7 @@ class TestData:
         `RawInputData.save_blessing`"""
         valobj = FRAME.FindVariable(var_name)
         if not valobj.IsValid():
-            # TODO error handling
+            # FIXME (todo) error handling
             raise Exception(f"<bless error: Cannot find variable {var_name}>")
 
         target_data = self.get_target_data()
@@ -374,7 +395,7 @@ class TestData:
         )
         path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
         with open(path, "w") as f:
-            json.dump(asdict(self), f)
+            json.dump(asdict(self), f, indent=" ")
 
 
 INPUT_DATA = TestData()
@@ -485,7 +506,9 @@ def check_layout(valobj: SBValue, expected: Variable):
     assert type.GetByteAlign() == exp_type.align
     assert len(type.fields) == len(exp_type.fields)
 
-    fields = {Field(f.name, f.GetType().GetName(), f.GetOffsetInBytes()) for f in type.fields}
+    fields = {
+        Field(f.name, f.GetType().GetName(), f.GetOffsetInBytes()) for f in type.fields
+    }
 
     assert fields == set(exp_type.fields)
 
@@ -516,26 +539,33 @@ def check_primitive(valobj: SBValue, expected: Variable | Child):
     if kind == lldb.eBasicTypeChar32:
         got = got.decode("utf-32")
 
-    assert got == exp_val, (
-        f'var "{valobj.GetName()}": value does not match. Got: {got}, expected: {exp_val} ("{expected}")'
-    )
+    assert (
+        got == exp_val
+    ), f'var "{valobj.GetName()}": value does not match. Got: {got}, expected: {exp_val} \
+("{expected}")'
 
 
 def check_format(valobj: SBValue, expected: Variable):
-    fmt = valobj.GetTypeFormat().GetFormat() if valobj.GetTypeFormat().IsValid() else None
-
-    assert fmt == expected.format, (
-        f"Invalid format for type {valobj.GetTypeName()}. Got: {valobj.GetTypeFormat()}"
+    fmt = (
+        valobj.GetTypeFormat().GetFormat() if valobj.GetTypeFormat().IsValid() else None
     )
+
+    assert (
+        fmt == expected.format
+    ), f"Invalid format for type {valobj.GetTypeName()}. Got: {valobj.GetTypeFormat()}"
 
 
 def check_aggregate(valobj: SBValue, expected: Variable):
-    synth = valobj.GetTypeSynthetic().GetData() if valobj.GetTypeSynthetic().IsValid() else None
+    synth = (
+        valobj.GetTypeSynthetic().GetData()
+        if valobj.GetTypeSynthetic().IsValid()
+        else None
+    )
     expected_synth = expected.synthetic
 
-    assert synth == expected_synth, (
-        f"Unexpected SyntheticProvider. Got: {synth}, expected: {expected_synth}"
-    )
+    assert (
+        synth == expected_synth
+    ), f"Unexpected SyntheticProvider. Got: {synth}, expected: {expected_synth}"
 
     if synth is not None:
         check_synthetic(valobj, synth, expected)
@@ -562,9 +592,9 @@ def check_synthetic(valobj: SBValue, synth_provider: str, expected: Variable):
 def check_children(valobj: SBValue, synth: str, expected: dict[str, Child]):
     child_count = valobj.GetNumChildren()
     expected_child_count = len(expected)
-    assert child_count == expected_child_count, (
-        f"Expected {expected_child_count} children, got {child_count}"
-    )
+    assert (
+        child_count == expected_child_count
+    ), f"Expected {expected_child_count} children, got {child_count}"
 
     errors: list[str] = []
 
@@ -589,14 +619,16 @@ def check_children(valobj: SBValue, synth: str, expected: dict[str, Child]):
         raise Exception("\n".join(errors))
 
 
-def check_summary(valobj: SBValue, provider_name: Optional[str], expected: Optional[str]):
+def check_summary(
+    valobj: SBValue, provider_name: Optional[str], expected: Optional[str]
+):
     sb_summary = valobj.GetTypeSummary()
     assert (
-        provider_name is None and not sb_summary.IsValid()
-    ) or valobj.GetTypeSummary().GetData() == provider_name, (
-        f"Unexpected SummaryProvider. Got: '{valobj.GetTypeSummary().GetData()}', expected: '{provider_name}'"
-    )
+        (provider_name is None and not sb_summary.IsValid())
+        or valobj.GetTypeSummary().GetData() == provider_name
+    ), f"Unexpected SummaryProvider. Got: '{valobj.GetTypeSummary().GetData()}', expected: \
+'{provider_name}'"
 
-    assert provider_name is None or valobj.GetSummary() == expected, (
-        f"Summary does not match. Got: '{valobj.GetSummary()}', expected: '{expected}'"
-    )
+    assert (
+        provider_name is None or valobj.GetSummary() == expected
+    ), f"Summary does not match. Got: '{valobj.GetSummary()}', expected: '{expected}'"

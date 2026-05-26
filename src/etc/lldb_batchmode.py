@@ -80,7 +80,6 @@ def execute_command(command_interpreter, command):
     print(command)
     command_interpreter.HandleCommand(command, res)
 
-
     if res.Succeeded():
         if res.HasResult():
             print(normalize_whitespace(res.GetOutput() or ""), end="\n")
@@ -101,23 +100,22 @@ def execute_command(command_interpreter, command):
                 print_debug(
                     "registering breakpoint callback, id = " + str(breakpoint_id)
                 )
-                # callback_command = (
-                #     f"breakpoint command add -s python {str(breakpoint_id)} -o 'import lldb_batchmode; lldb_batchmode.breakpoint_callback' "
-                # )
-                # command_interpreter.HandleCommand(callback_command, res)
-                # if res.Succeeded():
-                #     print_debug(
-                #         "successfully registered breakpoint callback, id = "
-                #         + str(breakpoint_id)
-                #     )
-                #     registered_breakpoints.add(breakpoint_id)
-                # else:
-                #     print(
-                #         "Error while trying to register breakpoint callback, id = "
-                #         + str(breakpoint_id)
-                #         + ", message = "
-                #         + str(res.GetError())
-                #     )
+                callback_command = f"breakpoint command add -s python {str(breakpoint_id)} -o \
+'import lldb_batchmode; lldb_batchmode.breakpoint_callback' "
+                command_interpreter.HandleCommand(callback_command, res)
+                if res.Succeeded():
+                    print_debug(
+                        "successfully registered breakpoint callback, id = "
+                        + str(breakpoint_id)
+                    )
+                    registered_breakpoints.add(breakpoint_id)
+                else:
+                    print(
+                        "Error while trying to register breakpoint callback, id = "
+                        + str(breakpoint_id)
+                        + ", message = "
+                        + str(res.GetError())
+                    )
     else:
         print(res.GetOutput())
         print(res.GetError())
@@ -216,7 +214,9 @@ def main():
     # Create a target from a file and arch
     print("Creating a target for '%s'" % target_path)
     target_error = lldb.SBError()
-    target: lldb.SBTarget = debugger.CreateTarget(target_path, None, None, True, target_error)
+    target: lldb.SBTarget = debugger.CreateTarget(
+        target_path, None, None, True, target_error
+    )
 
     if not target:
         print(
@@ -235,7 +235,6 @@ def main():
     command_interpreter: lldb.SBCommandInterpreter = debugger.GetCommandInterpreter()
 
     bless = os.environ["LLDB_BATCHMODE_BLESS_TEST_DATA"] == "1"
-
 
     try:
         script_file = open(script_path, "r")
@@ -268,13 +267,20 @@ def main():
                 # Before starting to run the program, let the thread sleep a bit, so all
                 # breakpoint added events can be processed
                 process = target.LaunchSimple(None, None, None)
-                if process.GetSelectedThread().GetStopReason() == lldb.eStopReasonBreakpoint and breakpoint_index is None:
+                if (
+                    process.GetSelectedThread().GetStopReason()
+                    == lldb.eStopReasonBreakpoint
+                    and breakpoint_index is None
+                ):
                     breakpoint_index = 0
                 continue
             if command == "continue" or command == "c":
                 process.Continue()
                 print(process.GetSelectedThread().GetStopReason())
-                if process.GetSelectedThread().GetStopReason() == lldb.eStopReasonBreakpoint:
+                if (
+                    process.GetSelectedThread().GetStopReason()
+                    == lldb.eStopReasonBreakpoint
+                ):
                     breakpoint_index += 1
                 continue
             if command.startswith("repr "):
@@ -287,7 +293,7 @@ def main():
                         f = p.GetThreadAtIndex(i).GetSelectedFrame()
                         # print(f.variables)
                         # lldb.frame = f
-                # lldb.frame = target.GetProcess().GetThreadAtIndex().name.selected_frame
+                        # lldb.frame = target.GetProcess().GetThreadAtIndex().name.selected_frame
                         lldb_test.run(var_name, breakpoint_index, f)
             elif command != "":
                 if command.startswith("breakpoint set"):
