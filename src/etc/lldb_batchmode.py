@@ -285,7 +285,10 @@ def main():
                 continue
             if command.startswith("repr "):
                 var_name = command.split(" ", 1)[1]
-                # execute_command(command_interpreter, f"script import lldb_test; lldb_test.run({var_name}, 0)")
+                # execute_command(
+                #     command_interpreter,
+                #     f"script import lldb_test; lldb_test.run({var_name}, 0)",
+                # )
                 # print(target.GetProcess().selected_thread.selected_frame)
                 p = target.GetProcess()
                 for i in range(p.GetNumThreads()):

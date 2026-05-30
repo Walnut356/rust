@@ -68,7 +68,7 @@ TARGET: Target = get_target()
 initialization."""
 
 
-def from_dict(ty: type[Any], data: JsonType):
+def from_dict(ty: type[Any], data: JsonType) -> "TargetData":
     """Translates a dictionary into an instance of the given dataclass type (with possibly nested
     dataclasses).
 
