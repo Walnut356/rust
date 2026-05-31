@@ -43,7 +43,7 @@ class Target(enum.StrEnum):
     A global var `TARGET` is set to the current variant upon `lldb_test.py`'s instantiation using an
     env var passed from `compiletest` and is not expected to change afterwards."""
 
-    NonWindowsGnu = "non_windows_gnu"
+    NonWindows = "non_windows"
     WindowsGnu = "windows_gnu"
     WindowsMsvc = "windows_msvc"
 
@@ -51,16 +51,12 @@ class Target(enum.StrEnum):
 def get_target() -> Target:
     # set by compiletest when launching LLDB
     t: str = os.environ["LLDB_BATCHMODE_TARGET_TRIPLE"]
+    if t.endswith("windows-msvc"):
+        return Target.WindowsMsvc
     if t.endswith("windows-gnu") or t.endswith("windows-gnullvm"):
         return Target.WindowsGnu
 
-    if t.endswith("windows-msvc"):
-        return Target.WindowsGnu
-
-    if t.endswith("-gnu"):
-        return Target.NonWindowsGnu
-
-    raise Exception(f"Unable to classify target '{t}'")
+    return Target.NonWindows
 
 
 TARGET: Target = get_target()
@@ -68,29 +64,40 @@ TARGET: Target = get_target()
 initialization."""
 
 
-def from_dict(ty: type[Any], data: JsonType) -> "TargetData":
+def annot_to_ty(annot: str) -> type[Any]:
+    """Resolves a string type annotation to its base type. For types with generics, the generic is
+    ignored."""
+    return globals().get(annot) or getattr(__builtins__, annot.split("[", 1)[0])
+
+
+def from_dict(ty: type[Any], data: JsonType):
     """Translates a dictionary into an instance of the given dataclass type (with possibly nested
     dataclasses).
 
     Relies on accurate type hints for the dataclass's fields, and the standard `dataclass.__init__`
     definition."""
+
+    # Optional isn't a constructor, so we have to "unwrap" it.
     if get_origin(ty) is Optional:
         ty = ty.__args__[0]
 
     # recurse into lists
     if isinstance(data, list):
         # pulls the generic type from the list (e.g. `list[int]` -> `int`)
-        (inner,) = ty.__args__
-        print(inner)
+        inner = ty.__args__[0]
+        if isinstance(inner, str):
+            inner = annot_to_ty(inner)
+
         return [from_dict(inner, i) for i in data]
 
     if get_origin(ty) is dict and ty.__args__[0] is str:
         assert isinstance(data, dict)
+        val_ty = ty.__args__[1]
+        if isinstance(val_ty, str):
+            val_ty = annot_to_ty(val_ty)
 
-        if ty.__args__[1] is Variable:
-            return {k: from_dict(Variable, data[k]) for k in data.keys()}
-        if ty.__args__[1] is Child:
-            return {k: from_dict(Child, data[k]) for k in data.keys()}
+        if val_ty is Variable or val_ty is Child or val_ty is Field:
+            return {k: from_dict(val_ty, data[k]) for k in data.keys()}
 
     # map dict -> dataclass, recursing for each field
     if is_dataclass(ty):
@@ -156,15 +163,12 @@ def decode_primitive(valobj: SBValue) -> int | float | bool | str:
 
 @dataclass(slots=True)
 class Field:
-    name: str
     type: str
     offset: int
 
     @staticmethod
     def from_lldb(field: lldb.SBTypeMember) -> "Field":
-        return Field(
-            field.GetName(), field.GetType().GetName(), field.GetOffsetInBytes()
-        )
+        return Field(field.GetType().GetName(), field.GetOffsetInBytes())
 
 
 @dataclass(slots=True)
@@ -175,31 +179,49 @@ class Type:
     align: int
     basic_type: int
     type_class: int
-    fields: list[Field]
-    # FIXME Rust doesn't output template *values* (the `10` in `ArrayVec<u8, 10>`), only template
-    # args (the `u8` in `ArrayVec<u8, 10>`). If that ever changes, we need to update the logic for
-    # this.
-    # generic_params: list[Type | Primitive]
-    # FIXME we can only look up static fields by name as of lldb 22, so we need a way to discover
-    # them. ATM only sum-type enums on MSVC use static fields , so it's not super important
+    fields: dict[str, Field]
+    generic_params: list[str]
+    # FIXME the only way we can look up static fields is by name (as of lldb 22), so we need a way
+    # to discover them. ATM only sum-type enums on MSVC use static fields, so it's not super urgent.
     # static_fields: list[StaticField]
 
     @staticmethod
-    def from_lldb(type: SBType) -> "Type":
+    def from_lldb(ty: SBType, sbtarget: lldb.SBTarget) -> "Type":
+        name = ty.GetName()
+
+        # FIXME Rust doesn't output template *values* (the `10` in `ArrayVec<u8, 10>`), only
+        # template args (the `u8` in `ArrayVec<u8, 10>`). That means these can possibly have
+        # different results. That's not a big deal, I don't think anything in the std library uses
+        # template values at the moment.
+        # Eventually we can either change `get_template_args` to skip template values OR update
+        # rustc to output them for DWARF debug info. Also, since it's target-specific behavior, it
+        # shouldn't actually cause tests not to work.
+        if TARGET == Target.WindowsMsvc:
+            generic_params = [
+                lldb_lookup.resolve_msvc_template_arg(x, sbtarget).GetName()
+                for x in lldb_lookup.get_template_args(name)
+            ]
+        else:
+            generic_params = [
+                ty.GetTemplateArgumentType(i).GetName()
+                for i in range(ty.GetNumberOfTemplateArguments())
+            ]
         return Type(
-            type.GetName(),
-            type.GetDisplayTypeName(),
-            type.GetByteSize(),
-            type.GetByteAlign(),
-            type.GetBasicType(),
-            type.GetTypeClass(),
-            [
-                Field.from_lldb(type.GetFieldAtIndex(i))
-                for i in range(type.GetNumberOfFields())
-            ],
+            name,
+            ty.GetDisplayTypeName(),
+            ty.GetByteSize(),
+            ty.GetByteAlign(),
+            ty.GetBasicType(),
+            ty.GetTypeClass(),
+            {
+                ty.GetFieldAtIndex(i).GetType().GetName(): Field.from_lldb(
+                    ty.GetFieldAtIndex(i)
+                )
+                for i in range(ty.GetNumberOfFields())
+            },
+            generic_params,
         )
         # FIXME (todo) template args
-        # self.generic_params = [lldb_lookup.get_template_args()]
 
 
 @dataclass(slots=True)
@@ -244,7 +266,7 @@ class Variable:
     @staticmethod
     def from_lldb(var: SBValue) -> "Variable":
         sbtype = var.GetType()
-        type = Type.from_lldb(sbtype)
+        type = Type.from_lldb(sbtype, var.GetTarget())
 
         if sbtype.GetBasicType() != lldb.eBasicTypeInvalid:
             value = decode_primitive(var)
@@ -324,21 +346,27 @@ class TestData:
     env var passed from `compiletest` and is not expected to change afterwards.
     """
 
-    non_windows_gnu: TargetData
+    non_windows: TargetData
     windows_gnu: TargetData
     windows_msvc: TargetData
 
     def __init__(self):
         path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
         if not os.path.isfile(path):
-            self.non_windows_gnu = TargetData()
+            self.non_windows = TargetData()
             self.windows_gnu = TargetData()
             self.windows_msvc = TargetData()
-
             return
 
         with open(path, "r") as f:
-            data = json.load(f)
+            try:
+                data = json.load(f)
+            except json.decoder.JSONDecodeError:
+                print("Warning: Malformed input data, reverting to default")
+                self.non_windows = TargetData()
+                self.windows_gnu = TargetData()
+                self.windows_msvc = TargetData()
+                return
 
         if BLESS and TARGET == Target.WindowsGnu:
             self.windows_gnu = TargetData()
@@ -350,10 +378,10 @@ class TestData:
         else:
             self.windows_msvc = from_dict(TargetData, data["windows_msvc"])
 
-        if BLESS and TARGET == Target.NonWindowsGnu:
-            self.non_windows_gnu = TargetData()
+        if BLESS and TARGET == Target.NonWindows:
+            self.non_windows = TargetData()
         else:
-            self.non_windows_gnu = from_dict(TargetData, data["non_windows_gnu"])
+            self.non_windows = from_dict(TargetData, data["non_windows"])
 
     def get_target_data(self) -> TargetData:
         """Retrieves data from the target specified by `compiletest`"""
@@ -364,7 +392,7 @@ class TestData:
         if TARGET == Target.WindowsMsvc:
             return self.windows_msvc
 
-        return self.non_windows_gnu
+        return self.non_windows
 
     def bless_variable(self, var_name: str, breakpoint_idx: int):
         """Updates the mapping with data generated from the given variable. Only affects the mapping
@@ -394,6 +422,14 @@ class TestData:
             sys.version, lldb.debugger.GetVersionString()
         )
         path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
+        # dumping directly to a file is somewhat unsafe. If the json ends up malformed, we could
+        # end up overwriting valid test data with a complete mess. Since the in-memory data
+        # typically *isn't* malformed, the `--bless` will pass and make it seem like nothing is
+        # wrong.
+        # While we could rely on git to help revert the test file, it's better to just not allow it
+        # to save malformed json in the first place. Thus, we dump the JSON, re-read it, and then
+        # only when that succeeds do we save it.
+        # FIXME error handling
         with open(path, "w") as f:
             json.dump(asdict(self), f, indent=" ")
 
@@ -507,10 +543,11 @@ def check_layout(valobj: SBValue, expected: Variable):
     assert len(type.fields) == len(exp_type.fields)
 
     fields = {
-        Field(f.name, f.GetType().GetName(), f.GetOffsetInBytes()) for f in type.fields
+        f.GetName(): Field(f.GetType().GetName(), f.GetOffsetInBytes())
+        for f in type.fields
     }
 
-    assert fields == set(exp_type.fields)
+    assert fields == exp_type.fields
 
 
 def check_primitive(valobj: SBValue, expected: Variable | Child):

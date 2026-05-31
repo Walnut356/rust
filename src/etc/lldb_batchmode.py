@@ -200,6 +200,7 @@ def main():
     print("Debugger commands script is '%s'." % script_path)
     print("Target executable is '%s'." % target_path)
     print("Current working directory is '%s'" % os.getcwd())
+    print(f"Target triple is: {os.environ['LLDB_BATCHMODE_TARGET_TRIPLE']}")
 
     # Start the timeout watchdog
     start_watchdog()
@@ -235,6 +236,7 @@ def main():
     command_interpreter: lldb.SBCommandInterpreter = debugger.GetCommandInterpreter()
 
     bless = os.environ["LLDB_BATCHMODE_BLESS_TEST_DATA"] == "1"
+    repr_cmd_run = False
 
     try:
         script_file = open(script_path, "r")
@@ -284,6 +286,7 @@ def main():
                     breakpoint_index += 1
                 continue
             if command.startswith("repr "):
+                repr_cmd_run = True
                 var_name = command.split(" ", 1)[1]
                 # execute_command(
                 #     command_interpreter,
@@ -314,7 +317,9 @@ def main():
         # point are either from the `bless` not working properly, or some other issue with the test
         # itself. In either case, we probably don't want to update the test data until those are
         # resolved.
-        if bless:
+        # Only runs if the test contains a repr command, as we don't want to create an input file
+        # for a test that won't ever use it.
+        if bless and repr_cmd_run:
             lldb_test.INPUT_DATA.save_blessing()
     finally:
         script_file.close()
