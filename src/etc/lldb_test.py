@@ -426,12 +426,14 @@ class TestData:
         # end up overwriting valid test data with a complete mess. Since the in-memory data
         # typically *isn't* malformed, the `--bless` will pass and make it seem like nothing is
         # wrong.
+
         # While we could rely on git to help revert the test file, it's better to just not allow it
         # to save malformed json in the first place. Thus, we dump the JSON, re-read it, and then
         # only when that succeeds do we save it.
-        # FIXME error handling
+        x = json.dumps(asdict(self), indent=" ")
+        _ = json.loads(x)
         with open(path, "w") as f:
-            json.dump(asdict(self), f, indent=" ")
+            f.write(x)
 
 
 INPUT_DATA = TestData()
