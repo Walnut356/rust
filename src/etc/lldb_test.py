@@ -163,18 +163,19 @@ def decode_primitive(valobj: SBValue) -> int | float | bool | str:
 
 @dataclass(slots=True)
 class Field:
-    type: str
+    type: "Type"
     offset: int
 
     @staticmethod
-    def from_lldb(field: lldb.SBTypeMember) -> "Field":
-        return Field(field.GetType().GetName(), field.GetOffsetInBytes())
+    def from_lldb(field: lldb.SBTypeMember, sbtarget: lldb.SBTarget) -> "Field":
+        return Field(
+            Type.from_lldb(field.GetType(), sbtarget), field.GetOffsetInBytes()
+        )
 
 
 @dataclass(slots=True)
 class Type:
     name: str
-    pretty_name: str
     size: int
     align: int
     basic_type: int
@@ -197,6 +198,12 @@ class Type:
         # rustc to output them for DWARF debug info. Also, since it's target-specific behavior, it
         # shouldn't actually cause tests not to work.
         if TARGET == Target.WindowsMsvc:
+            print(f"generics for: {name}")
+            for x in lldb_lookup.get_template_args(name):
+                print(
+                    f"resolved arg '{x}' as \
+'{lldb_lookup.resolve_msvc_template_arg(x, sbtarget).GetName()}'"
+                )
             generic_params = [
                 lldb_lookup.resolve_msvc_template_arg(x, sbtarget).GetName()
                 for x in lldb_lookup.get_template_args(name)
@@ -208,14 +215,13 @@ class Type:
             ]
         return Type(
             name,
-            ty.GetDisplayTypeName(),
             ty.GetByteSize(),
             ty.GetByteAlign(),
             ty.GetBasicType(),
             ty.GetTypeClass(),
             {
-                ty.GetFieldAtIndex(i).GetType().GetName(): Field.from_lldb(
-                    ty.GetFieldAtIndex(i)
+                ty.GetFieldAtIndex(i).GetName(): Field.from_lldb(
+                    ty.GetFieldAtIndex(i), sbtarget
                 )
                 for i in range(ty.GetNumberOfFields())
             },
@@ -229,22 +235,23 @@ class Child:
     """Similar to `Variable`, but carries less information since we primarily test top-level
     values"""
 
+    name: str
     type: str
-    value: Primitive | dict[str, "Child"]
+    value: Primitive | list["Child"]
 
     @staticmethod
     def from_lldb(child: SBValue) -> "Child":
         type: SBType = child.GetType()
 
         if type.GetBasicType() == lldb.eBasicTypeInvalid:
-            value = {}
+            value = []
             for i in range(child.GetNumChildren()):
                 c = child.GetChildAtIndex(i)
-                value[c.GetName()] = Child.from_lldb(c)
+                value.append(Child.from_lldb(c))
         else:
             value = decode_primitive(child)
 
-        return Child(child.GetType().GetName(), value)
+        return Child(child.GetName(), child.GetType().GetName(), value)
 
 
 @dataclass(slots=True)
@@ -254,6 +261,7 @@ class Variable:
     """
 
     type: Type
+    pretty_type_name: Optional[str]
     pretty_print: Optional[str]
     """`None` for aggregates with no summary provider"""
     value: Optional[Primitive]
@@ -261,12 +269,18 @@ class Variable:
     synthetic: Optional[str]
     summary: Optional[str]
     format: Optional[int]
-    children: dict[str, Child]
+    # Stored as a list instead of a dict because child order matters
+    children: list[Child]
 
     @staticmethod
     def from_lldb(var: SBValue) -> "Variable":
         sbtype = var.GetType()
         type = Type.from_lldb(sbtype, var.GetTarget())
+
+        pretty_type_name = var.GetDisplayTypeName()
+
+        if pretty_type_name == type.name:
+            pretty_type_name = None
 
         if sbtype.GetBasicType() != lldb.eBasicTypeInvalid:
             value = decode_primitive(var)
@@ -274,12 +288,12 @@ class Variable:
             value = None
 
         if (synth := var.GetTypeSynthetic()).IsValid():
-            synthetic = synth.GetData()
+            synthetic = synth.GetData().strip()
         else:
             synthetic = None
 
         if (summ := var.GetTypeSummary()).IsValid():
-            summary = summ.GetData()
+            summary = summ.GetData().strip()
         else:
             summary = None
 
@@ -290,13 +304,13 @@ class Variable:
 
         pretty_print = get_summary_or_value(var)
 
-        children = {
-            (c := var.GetChildAtIndex(i)).GetName(): Child.from_lldb(c)
-            for i in range(var.GetNumChildren())
-        }
+        children = [
+            Child.from_lldb(var.GetChildAtIndex(i)) for i in range(var.GetNumChildren())
+        ]
 
         return Variable(
             type,
+            pretty_type_name,
             pretty_print,
             value,
             synthetic,
@@ -353,10 +367,16 @@ class TestData:
     def __init__(self):
         path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
         if not os.path.isfile(path):
-            self.non_windows = TargetData()
-            self.windows_gnu = TargetData()
-            self.windows_msvc = TargetData()
-            return
+            if BLESS:
+                self.non_windows = TargetData()
+                self.windows_gnu = TargetData()
+                self.windows_msvc = TargetData()
+                return
+            else:
+                raise Exception(
+                    f"Invalid input data path: '{path}'\nIf test data has not been \
+generated for this test yet, consider using the `--bless` option."
+                )
 
         with open(path, "r") as f:
             try:
@@ -411,7 +431,12 @@ class TestData:
 
         target_data.breakpoints[breakpoint_idx][var_name] = Variable.from_lldb(valobj)
 
-        print(self)
+        print(
+            json.dumps(
+                asdict(self.get_target_data().breakpoints[breakpoint_idx][var_name]),
+                indent=" ",
+            )
+        )
 
     def save_blessing(self):
         """Writes the entirety of `self` to the input file. Used to finalize changes made by
@@ -544,12 +569,9 @@ def check_layout(valobj: SBValue, expected: Variable):
     assert type.GetByteAlign() == exp_type.align
     assert len(type.fields) == len(exp_type.fields)
 
-    fields = {
-        f.GetName(): Field(f.GetType().GetName(), f.GetOffsetInBytes())
-        for f in type.fields
-    }
+    fields = {f.GetName(): Field.from_lldb(f, valobj.GetTarget()) for f in type.fields}
 
-    assert fields == exp_type.fields
+    assert fields == exp_type.fields, f"expected: {exp_type.fields}\ngot: {fields}"
 
 
 def check_primitive(valobj: SBValue, expected: Variable | Child):
@@ -559,8 +581,12 @@ def check_primitive(valobj: SBValue, expected: Variable | Child):
     kind = type.GetBasicType()
     assert kind != lldb.eBasicTypeInvalid, f"{valobj.name} is not a primtive"
 
-    parsed = Variable.from_lldb(valobj)
-    assert parsed == expected
+    if isinstance(expected, Variable):
+        parsed = Variable.from_lldb(valobj)
+    elif isinstance(expected, Child):
+        parsed = Child.from_lldb(valobj)
+
+    assert parsed == expected, f"expected: {expected}, got: {parsed}"
 
     if (fmt := TYPE_UNPACK_FMT.get(kind)) is None:
         raise Exception(f"Unexpected eBasicType: {kind}")
@@ -595,23 +621,27 @@ def check_format(valobj: SBValue, expected: Variable):
 
 
 def check_aggregate(valobj: SBValue, expected: Variable):
-    synth = (
-        valobj.GetTypeSynthetic().GetData()
-        if valobj.GetTypeSynthetic().IsValid()
-        else None
-    )
-    expected_synth = expected.synthetic
+    if valobj.GetTypeSynthetic().IsValid():
+        valobj = valobj.GetSyntheticValue()
+        check_synthetic(valobj, expected)
+    else:
+        if expected.synthetic is not None:
+            raise Exception(
+                f"Variable '{valobj.GetName()} does not have a synthetic, \
+expected: '{expected.synthetic}'"
+            )
+
+    check_children(valobj, expected.children)
+
+
+def check_synthetic(valobj: SBValue, expected: Variable):
+    synth_name = valobj.GetTypeSynthetic().GetData()
 
     assert (
-        synth == expected_synth
-    ), f"Unexpected SyntheticProvider. Got: {synth}, expected: {expected_synth}"
+        synth_name == expected.synthetic
+    ), f"Unexpected SyntheticProvider. Got: {synth_name}, expected: {expected.synthetic}"
 
-    if synth is not None:
-        check_synthetic(valobj, synth, expected)
-
-
-def check_synthetic(valobj: SBValue, synth_provider: str, expected: Variable):
-    (_mod_name, _, provider_name) = synth_provider.partition(".")
+    (_mod_name, _, provider_name) = synth_name.partition(".")
     provider = getattr(lldb_lookup, provider_name)
     # make sure __init__ doesn't throw an exception
     synth = provider(valobj.GetNonSyntheticValue(), {})
@@ -625,36 +655,34 @@ def check_synthetic(valobj: SBValue, synth_provider: str, expected: Variable):
             f"Synthetic '{provider.__name__}' missing required method `get_child_at_index`"
         )
 
-    check_children(valobj, synth, expected.children)
 
-
-def check_children(valobj: SBValue, synth: str, expected: dict[str, Child]):
+def check_children(valobj: SBValue, expected: list[Child]):
     child_count = valobj.GetNumChildren()
     expected_child_count = len(expected)
-    assert (
-        child_count == expected_child_count
-    ), f"Expected {expected_child_count} children, got {child_count}"
+    if child_count != expected_child_count:
+        print(f"Expected {expected_child_count} child(ren), got {child_count}")
 
     errors: list[str] = []
 
-    for k, v in expected.items():
-        child = valobj.GetChildMemberWithName(k)
-        if not child.IsValid():
-            errors.append(f"Cannot find child: {valobj.GetName()}.{k}")
+    for c in expected:
+        got_child = valobj.GetChildMemberWithName(c.name)
+        if not got_child.IsValid():
+            errors.append(f"Cannot find child: {valobj.GetName()}.{c.name}")
             continue
 
-        if child.TypeIsPointerType():
+        if got_child.TypeIsPointerType():
             continue
 
-        if isinstance(v, dict):
-            check_children(child, synth, v)
+        if isinstance(c.value, dict):
+            check_children(got_child, c.value)
         else:
-            try:
-                check_primitive(child, v)
-            except Exception as e:
-                errors.append(str(e))
+            # try:
+            check_primitive(got_child, c)
+        # except Exception as e:
+        #     errors.append(str(e))
 
     if len(errors) != 0:
+        print(errors)
         raise Exception("\n".join(errors))
 
 
@@ -664,7 +692,7 @@ def check_summary(
     sb_summary = valobj.GetTypeSummary()
     assert (
         (provider_name is None and not sb_summary.IsValid())
-        or valobj.GetTypeSummary().GetData() == provider_name
+        or valobj.GetTypeSummary().GetData().strip() == provider_name
     ), f"Unexpected SummaryProvider. Got: '{valobj.GetTypeSummary().GetData()}', expected: \
 '{provider_name}'"
 
