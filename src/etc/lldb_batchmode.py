@@ -288,22 +288,13 @@ def main():
             if command.startswith("repr "):
                 repr_cmd_run = True
                 var_name = command.split(" ", 1)[1]
-                # execute_command(
-                #     command_interpreter,
-                #     f"script import lldb_test; lldb_test.run({var_name}, 0)",
-                # )
-                # print(target.GetProcess().selected_thread.selected_frame)
+
                 p = target.GetProcess()
-                for i in range(p.GetNumThreads()):
-                    if p.GetThreadAtIndex(i).name == "main":
-                        f = p.GetThreadAtIndex(i).GetSelectedFrame()
-                        # print(f.variables)
-                        # lldb.frame = f
-                        # lldb.frame = target.GetProcess().GetThreadAtIndex().name.selected_frame
-                        lldb_test.run(var_name, breakpoint_index, f)
+                frame = p.GetSelectedThread().GetSelectedFrame()
+
+                print(f"<running check for {var_name}>")
+                lldb_test.run(var_name, breakpoint_index, frame)
             elif command != "":
-                if command.startswith("breakpoint set"):
-                    assert False
                 execute_command(command_interpreter, command)
 
     except IOError as e:
@@ -311,6 +302,11 @@ def main():
         print(e, file=sys.stderr)
         print("Aborting.", file=sys.stderr)
         sys.exit(1)
+    except Exception as e:
+        import traceback
+
+        for line in traceback.format_exception(e):
+            print(line)
     else:
         # Executes if the `try` block throws no exceptions.
         # `bless` should resolve any errors from mismatched test data, so any errors that reach this

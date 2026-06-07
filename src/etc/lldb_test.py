@@ -3,6 +3,7 @@
 # and it's a bit more trouble to pull the class information that way.
 # from __future__ import annotations
 
+from struct import calcsize
 from typing import get_origin
 from dataclasses import field
 import sys
@@ -32,7 +33,7 @@ FRAME = lldb.frame
 BLESS = os.environ["LLDB_BATCHMODE_BLESS_TEST_DATA"] == "1"
 
 
-class Target(enum.StrEnum):
+class Target(enum.Enum):
     """Due to the differences between PDB and DWARF debug info, we cannot guarantee their output
     will be identical. Since LLDB can handle both, we need to conditionally select the correct
     test data to use.
@@ -137,11 +138,60 @@ changed intentionally, use the `--bless` option to update test data to the new s
     return data
 
 
+_UNSIGNED_INT_TYPES = {
+    lldb.eBasicTypeUnsignedChar,
+    lldb.eBasicTypeUnsignedShort,
+    lldb.eBasicTypeUnsignedInt,
+    lldb.eBasicTypeUnsignedLong,
+    lldb.eBasicTypeUnsignedLongLong,
+    lldb.eBasicTypeUnsignedInt128,
+}
+
+_FLOAT_TYPES = {
+    lldb.eBasicTypeHalf,
+    lldb.eBasicTypeFloat,
+    lldb.eBasicTypeDouble,
+}
+
+_SIZE_TO_FLOAT_FMT = {
+    2: "e",
+    4: "f",
+    8: "d",
+}
+
+_SIZE_TO_INT_FMT = {
+    1: "b",
+    2: "h",
+    4: "l",
+    8: "q",
+    16: "qq",
+}
+
+
+def type_unpack_fmt(kind: int, size: int) -> str:
+    if kind in _FLOAT_TYPES:
+        return _SIZE_TO_FLOAT_FMT[size]
+
+    if kind == lldb.eBasicTypeBool:
+        return "?"
+
+    if kind == lldb.eBasicTypeChar32:
+        return "4s"
+
+    fmt = _SIZE_TO_INT_FMT[size]
+
+    if kind in _UNSIGNED_INT_TYPES:
+        fmt.upper()
+
+    return fmt
+
+
 def decode_primitive(valobj: SBValue) -> int | float | bool | str:
     data: SBData = valobj.GetData()
 
     type: SBType = valobj.GetType().GetCanonicalType()
     kind = type.GetBasicType()
+
     assert kind != lldb.eBasicTypeInvalid, f"{valobj.name} is not a primtive"
 
     is_big_endian = data.GetByteOrder() == lldb.eByteOrderBig
@@ -153,7 +203,10 @@ def decode_primitive(valobj: SBValue) -> int | float | bool | str:
     else:
         endian = "<"
 
-    got = unpack(endian + TYPE_UNPACK_FMT[kind], buf)[0]
+    format = endian + type_unpack_fmt(kind, type.GetByteSize())
+    assert calcsize(format) == data.GetByteSize()
+
+    got = unpack(format, buf)[0]
 
     if kind == lldb.eBasicTypeChar32:
         got = got.decode("utf-32")
@@ -506,11 +559,6 @@ TYPE_UNPACK_FMT = {
     lldb.eBasicTypeChar32: "4s",
 }
 
-FLOAT_TYPES = {
-    lldb.eBasicTypeHalf,
-    lldb.eBasicTypeFloat,
-    lldb.eBasicTypeDouble,
-}
 
 INT_TYPES = {
     lldb.eBasicTypeChar,
@@ -575,8 +623,6 @@ def check_layout(valobj: SBValue, expected: Variable):
 
 
 def check_primitive(valobj: SBValue, expected: Variable | Child):
-    data: SBData = valobj.GetData()
-
     type: SBType = valobj.GetType().GetCanonicalType()
     kind = type.GetBasicType()
     assert kind != lldb.eBasicTypeInvalid, f"{valobj.name} is not a primtive"
@@ -587,27 +633,6 @@ def check_primitive(valobj: SBValue, expected: Variable | Child):
         parsed = Child.from_lldb(valobj)
 
     assert parsed == expected, f"expected: {expected}, got: {parsed}"
-
-    if (fmt := TYPE_UNPACK_FMT.get(kind)) is None:
-        raise Exception(f"Unexpected eBasicType: {kind}")
-
-    buf = data.ReadRawData(lldb.SBError(), 0, data.GetByteSize())
-
-    if data.GetByteOrder() == lldb.eByteOrderBig or kind == lldb.eBasicTypeChar32:
-        endian = ">"
-    else:
-        endian = "<"
-
-    got = unpack(endian + fmt, buf)[0]
-    exp_val = expected.value
-
-    if kind == lldb.eBasicTypeChar32:
-        got = got.decode("utf-32")
-
-    assert (
-        got == exp_val
-    ), f'var "{valobj.GetName()}": value does not match. Got: {got}, expected: {exp_val} \
-("{expected}")'
 
 
 def check_format(valobj: SBValue, expected: Variable):

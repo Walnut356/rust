@@ -1,10 +1,270 @@
 {
  "non_windows": {
   "bless_metadata": {
-   "python_version": "",
-   "lldb_version": ""
+   "python_version": "3.14.5 (main, May 11 2026, 00:00:00) [GCC 16.1.1 20260501 (Red Hat 16.1.1-1)]",
+   "lldb_version": "lldb version 22.1.6"
   },
-  "breakpoints": []
+  "breakpoints": [
+   {
+    "a": {
+     "type": {
+      "name": "aggregate_type::A",
+      "size": 4,
+      "align": 2,
+      "basic_type": 0,
+      "type_class": 16384,
+      "fields": {
+       "f1": {
+        "type": {
+         "name": "unsigned char",
+         "size": 1,
+         "align": 1,
+         "basic_type": 4,
+         "type_class": 4,
+         "fields": {},
+         "generic_params": []
+        },
+        "offset": 2
+       },
+       "f2": {
+        "type": {
+         "name": "short",
+         "size": 2,
+         "align": 2,
+         "basic_type": 11,
+         "type_class": 4,
+         "fields": {},
+         "generic_params": []
+        },
+        "offset": 0
+       }
+      },
+      "generic_params": []
+     },
+     "pretty_type_name": null,
+     "pretty_print": null,
+     "value": null,
+     "synthetic": "lldb_lookup.synthetic_lookup",
+     "summary": null,
+     "format": null,
+     "children": [
+      {
+       "name": "f1",
+       "type": "unsigned char",
+       "value": 5
+      },
+      {
+       "name": "f2",
+       "type": "short",
+       "value": -5
+      }
+     ]
+    },
+    "b": {
+     "type": {
+      "name": "alloc::vec::Vec<unsigned int, alloc::alloc::Global>",
+      "size": 24,
+      "align": 8,
+      "basic_type": 0,
+      "type_class": 16384,
+      "fields": {
+       "buf": {
+        "type": {
+         "name": "alloc::raw_vec::RawVec<unsigned int, alloc::alloc::Global>",
+         "size": 16,
+         "align": 8,
+         "basic_type": 0,
+         "type_class": 16384,
+         "fields": {
+          "inner": {
+           "type": {
+            "name": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+            "size": 16,
+            "align": 8,
+            "basic_type": 0,
+            "type_class": 16384,
+            "fields": {
+             "ptr": {
+              "type": {
+               "name": "core::ptr::unique::Unique<unsigned char>",
+               "size": 8,
+               "align": 8,
+               "basic_type": 0,
+               "type_class": 16384,
+               "fields": {
+                "pointer": {
+                 "type": {
+                  "name": "core::ptr::non_null::NonNull<unsigned char>",
+                  "size": 8,
+                  "align": 8,
+                  "basic_type": 0,
+                  "type_class": 16384,
+                  "fields": {
+                   "pointer": {
+                    "type": {
+                     "name": "unsigned char *",
+                     "size": 8,
+                     "align": 8,
+                     "basic_type": 0,
+                     "type_class": 4096,
+                     "fields": {},
+                     "generic_params": []
+                    },
+                    "offset": 0
+                   }
+                  },
+                  "generic_params": [
+                   "unsigned char"
+                  ]
+                 },
+                 "offset": 0
+                },
+                "_marker": {
+                 "type": {
+                  "name": "core::marker::PhantomData<unsigned char>",
+                  "size": 0,
+                  "align": 1,
+                  "basic_type": 0,
+                  "type_class": 16384,
+                  "fields": {},
+                  "generic_params": [
+                   "unsigned char"
+                  ]
+                 },
+                 "offset": 8
+                }
+               },
+               "generic_params": [
+                "unsigned char"
+               ]
+              },
+              "offset": 8
+             },
+             "cap": {
+              "type": {
+               "name": "core::num::niche_types::UsizeNoHighBit",
+               "size": 8,
+               "align": 8,
+               "basic_type": 0,
+               "type_class": 16384,
+               "fields": {
+                "__0": {
+                 "type": {
+                  "name": "unsigned long",
+                  "size": 8,
+                  "align": 8,
+                  "basic_type": 16,
+                  "type_class": 4,
+                  "fields": {},
+                  "generic_params": []
+                 },
+                 "offset": 0
+                }
+               },
+               "generic_params": []
+              },
+              "offset": 0
+             },
+             "alloc": {
+              "type": {
+               "name": "alloc::alloc::Global",
+               "size": 0,
+               "align": 1,
+               "basic_type": 0,
+               "type_class": 16384,
+               "fields": {},
+               "generic_params": []
+              },
+              "offset": 16
+             }
+            },
+            "generic_params": [
+             "alloc::alloc::Global"
+            ]
+           },
+           "offset": 0
+          },
+          "_marker": {
+           "type": {
+            "name": "core::marker::PhantomData<unsigned int>",
+            "size": 0,
+            "align": 1,
+            "basic_type": 0,
+            "type_class": 16384,
+            "fields": {},
+            "generic_params": [
+             "unsigned int"
+            ]
+           },
+           "offset": 16
+          }
+         },
+         "generic_params": [
+          "unsigned int",
+          "alloc::alloc::Global"
+         ]
+        },
+        "offset": 0
+       },
+       "len": {
+        "type": {
+         "name": "unsigned long",
+         "size": 8,
+         "align": 8,
+         "basic_type": 16,
+         "type_class": 4,
+         "fields": {},
+         "generic_params": []
+        },
+        "offset": 16
+       }
+      },
+      "generic_params": [
+       "unsigned int",
+       "alloc::alloc::Global"
+      ]
+     },
+     "pretty_type_name": null,
+     "pretty_print": "size=6",
+     "value": null,
+     "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+     "summary": "lldb_lookup.SizeSummaryProvider(valobj,internal_dict)",
+     "format": null,
+     "children": [
+      {
+       "name": "[0]",
+       "type": "unsigned int",
+       "value": 0
+      },
+      {
+       "name": "[1]",
+       "type": "unsigned int",
+       "value": 1
+      },
+      {
+       "name": "[2]",
+       "type": "unsigned int",
+       "value": 2
+      },
+      {
+       "name": "[3]",
+       "type": "unsigned int",
+       "value": 3
+      },
+      {
+       "name": "[4]",
+       "type": "unsigned int",
+       "value": 4
+      },
+      {
+       "name": "[5]",
+       "type": "unsigned int",
+       "value": 5
+      }
+     ]
+    }
+   }
+  ]
  },
  "windows_gnu": {
   "bless_metadata": {
