@@ -10,6 +10,15 @@ from lldb import (
     eBasicTypeUnsignedChar,
     eFormatChar,
     eTypeIsInteger,
+    eBasicTypeUnsignedShort,
+    eBasicTypeUnsignedLongLong,
+    eBasicTypeSignedChar,
+    eBasicTypeShort,
+    eBasicTypeLongLong,
+    eBasicTypeFloat,
+    eBasicTypeDouble,
+    eBasicTypeHalf,
+    eBasicTypeChar32,
 )
 
 from rust_types import is_tuple_fields
@@ -206,6 +215,21 @@ def get_template_args(type_name: str) -> Generator[str, None, None]:
 
 MSVC_PTR_PREFIX: List[str] = ["ref$<", "ref_mut$<", "ptr_const$<", "ptr_mut$<"]
 
+PRIMITIVE_TYPES: dict[str, int] = {
+    "u8": eBasicTypeUnsignedChar,
+    "u16": eBasicTypeUnsignedShort,
+    "u32": eBasicTypeUnsignedLong,
+    "u64": eBasicTypeUnsignedLongLong,
+    "i8": eBasicTypeSignedChar,
+    "i16": eBasicTypeShort,
+    "i32": eBasicTypeLong,
+    "i64": eBasicTypeLongLong,
+    "f16": eBasicTypeHalf,
+    "f32": eBasicTypeFloat,
+    "f64": eBasicTypeDouble,
+    "char": eBasicTypeChar32,
+}
+
 
 def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
     """
@@ -222,6 +246,17 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
     current version of LLDB, so instead the types are generated via `base_type.GetPointerType()` and
     `base_type.GetArrayType()`, which bypass the PDB file and ask clang directly for the type node.
     """
+
+    # As of LLDB 22, finding primitives based on `FindFirstType` with their rust name no longer
+    # works. Instead, we can look them up by their `eBasicType` equivalent. For usize and isize,
+    # we convert them to their bit-sized counterpart before the lookup
+    if arg_name == "isize" or arg_name == "usize":
+        equivalent = f"{arg_name[0]}{target.GetAddressByteSize() * 8}"
+        return target.GetBasicType(PRIMITIVE_TYPES[equivalent])
+
+    if (basic_type := PRIMITIVE_TYPES.get(arg_name)) is not None:
+        return target.GetBasicType(basic_type)
+
     result = target.FindFirstType(arg_name)
 
     if result.IsValid():
