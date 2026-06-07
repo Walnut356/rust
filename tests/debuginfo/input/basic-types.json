@@ -16,7 +16,6 @@
     "b": {
      "type": {
       "name": "bool",
-      "pretty_name": "bool",
       "size": 1,
       "align": 1,
       "basic_type": 21,
@@ -24,17 +23,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "false",
      "value": false,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i": {
      "type": {
       "name": "long long",
-      "pretty_name": "long long",
       "size": 8,
       "align": 8,
       "basic_type": 17,
@@ -42,17 +41,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "-1",
      "value": -1,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i8": {
      "type": {
-      "name": "signed char",
-      "pretty_name": "signed char",
+      "name": "char",
       "size": 1,
       "align": 1,
       "basic_type": 3,
@@ -60,17 +59,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "'D'",
      "value": 68,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i16": {
      "type": {
       "name": "short",
-      "pretty_name": "short",
       "size": 2,
       "align": 2,
       "basic_type": 11,
@@ -78,17 +77,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "-16",
      "value": -16,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i32": {
      "type": {
       "name": "int",
-      "pretty_name": "int",
       "size": 4,
       "align": 4,
       "basic_type": 13,
@@ -96,17 +95,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "-32",
      "value": -32,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i64": {
      "type": {
       "name": "long long",
-      "pretty_name": "long long",
       "size": 8,
       "align": 8,
       "basic_type": 17,
@@ -114,19 +113,19 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "-64",
      "value": -64,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     }
    },
    {
     "u": {
      "type": {
       "name": "unsigned long long",
-      "pretty_name": "unsigned long long",
       "size": 8,
       "align": 8,
       "basic_type": 18,
@@ -134,17 +133,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "1",
      "value": 1,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "u8": {
      "type": {
       "name": "unsigned char",
-      "pretty_name": "unsigned char",
       "size": 1,
       "align": 1,
       "basic_type": 4,
@@ -152,17 +151,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "'d'",
      "value": 100,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "u16": {
      "type": {
       "name": "unsigned short",
-      "pretty_name": "unsigned short",
       "size": 2,
       "align": 2,
       "basic_type": 12,
@@ -170,17 +169,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "16",
      "value": 16,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "u32": {
      "type": {
       "name": "unsigned int",
-      "pretty_name": "unsigned int",
       "size": 4,
       "align": 4,
       "basic_type": 14,
@@ -188,17 +187,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "32",
      "value": 32,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "u64": {
      "type": {
       "name": "unsigned long long",
-      "pretty_name": "unsigned long long",
       "size": 8,
       "align": 8,
       "basic_type": 18,
@@ -206,17 +205,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "64",
      "value": 64,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "f32": {
      "type": {
       "name": "float",
-      "pretty_name": "float",
       "size": 4,
       "align": 4,
       "basic_type": 23,
@@ -224,17 +223,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "2.5",
      "value": 2.5,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "f64": {
      "type": {
       "name": "double",
-      "pretty_name": "double",
       "size": 8,
       "align": 8,
       "basic_type": 24,
@@ -242,12 +241,13 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "3.5",
      "value": 3.5,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     }
    }
   ]
@@ -262,7 +262,6 @@
     "b": {
      "type": {
       "name": "bool",
-      "pretty_name": "bool",
       "size": 1,
       "align": 1,
       "basic_type": 21,
@@ -270,17 +269,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "false",
      "value": false,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i": {
      "type": {
       "name": "long long",
-      "pretty_name": "long long",
       "size": 8,
       "align": 8,
       "basic_type": 17,
@@ -288,17 +287,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "-1",
      "value": -1,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i8": {
      "type": {
       "name": "signed char",
-      "pretty_name": "signed char",
       "size": 1,
       "align": 1,
       "basic_type": 3,
@@ -306,17 +305,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "'D'",
      "value": 68,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i16": {
      "type": {
       "name": "short",
-      "pretty_name": "short",
       "size": 2,
       "align": 2,
       "basic_type": 11,
@@ -324,17 +323,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "-16",
      "value": -16,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i32": {
      "type": {
       "name": "int",
-      "pretty_name": "int",
       "size": 4,
       "align": 4,
       "basic_type": 13,
@@ -342,17 +341,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "-32",
      "value": -32,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "i64": {
      "type": {
       "name": "long long",
-      "pretty_name": "long long",
       "size": 8,
       "align": 8,
       "basic_type": 17,
@@ -360,19 +359,19 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "-64",
      "value": -64,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     }
    },
    {
     "u": {
      "type": {
       "name": "unsigned long long",
-      "pretty_name": "unsigned long long",
       "size": 8,
       "align": 8,
       "basic_type": 18,
@@ -380,17 +379,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "1",
      "value": 1,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "u8": {
      "type": {
       "name": "unsigned char",
-      "pretty_name": "unsigned char",
       "size": 1,
       "align": 1,
       "basic_type": 4,
@@ -398,17 +397,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "'d'",
      "value": 100,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "u16": {
      "type": {
       "name": "unsigned short",
-      "pretty_name": "unsigned short",
       "size": 2,
       "align": 2,
       "basic_type": 12,
@@ -416,17 +415,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "16",
      "value": 16,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "u32": {
      "type": {
       "name": "unsigned int",
-      "pretty_name": "unsigned int",
       "size": 4,
       "align": 4,
       "basic_type": 14,
@@ -434,17 +433,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "32",
      "value": 32,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "u64": {
      "type": {
       "name": "unsigned long long",
-      "pretty_name": "unsigned long long",
       "size": 8,
       "align": 8,
       "basic_type": 18,
@@ -452,17 +451,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "64",
      "value": 64,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "f32": {
      "type": {
       "name": "float",
-      "pretty_name": "float",
       "size": 4,
       "align": 4,
       "basic_type": 23,
@@ -470,17 +469,17 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "2.5",
      "value": 2.5,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     },
     "f64": {
      "type": {
       "name": "double",
-      "pretty_name": "double",
       "size": 8,
       "align": 8,
       "basic_type": 24,
@@ -488,12 +487,13 @@
       "fields": {},
       "generic_params": []
      },
+     "pretty_type_name": null,
      "pretty_print": "3.5",
      "value": 3.5,
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {}
+     "children": []
     }
    }
   ]

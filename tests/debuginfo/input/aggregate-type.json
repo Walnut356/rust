@@ -54,16 +54,18 @@
      "synthetic": "lldb_lookup.synthetic_lookup",
      "summary": null,
      "format": null,
-     "children": {
-      "f1": {
+     "children": [
+      {
+       "name": "f1",
        "type": "unsigned char",
        "value": 5
       },
-      "f2": {
+      {
+       "name": "f2",
        "type": "short",
        "value": -5
       }
-     }
+     ]
     },
     "b": {
      "type": {
@@ -235,32 +237,38 @@
      "synthetic": "lldb_lookup.StdVecSyntheticProvider",
      "summary": "lldb_lookup.SizeSummaryProvider(valobj,internal_dict)",
      "format": null,
-     "children": {
-      "[0]": {
+     "children": [
+      {
+       "name": "[0]",
        "type": "unsigned int",
        "value": 0
       },
-      "[1]": {
+      {
+       "name": "[1]",
        "type": "unsigned int",
        "value": 1
       },
-      "[2]": {
+      {
+       "name": "[2]",
        "type": "unsigned int",
        "value": 2
       },
-      "[3]": {
+      {
+       "name": "[3]",
        "type": "unsigned int",
        "value": 3
       },
-      "[4]": {
+      {
+       "name": "[4]",
        "type": "unsigned int",
        "value": 4
       },
-      "[5]": {
+      {
+       "name": "[5]",
        "type": "unsigned int",
        "value": 5
       }
-     }
+     ]
     }
    }
   ]
