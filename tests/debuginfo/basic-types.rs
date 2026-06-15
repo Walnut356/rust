@@ -51,9 +51,10 @@
 //@ lldb-check:[...] false
 //@ lldb-command:v i
 //@ lldb-check:[...] -1
-
+//@ lldb-command:v c
+//@ lldb-check: [...] U+0x00000061 U'a'
 //@ lldb-command:v i8
-//@ lldb-check:[...] 'D'
+//@ lldb-check:[...] 68
 //@ lldb-command:v i16
 //@ lldb-check:[...] -16
 //@ lldb-command:v i32
@@ -63,7 +64,7 @@
 //@ lldb-command:v u
 //@ lldb-check:[...] 1
 //@ lldb-command:v u8
-//@ lldb-check:[...] 'd'
+//@ lldb-check:[...] 100
 //@ lldb-command:v u16
 //@ lldb-check:[...] 16
 //@ lldb-command:v u32

@@ -1065,10 +1065,27 @@ class StdVecSyntheticProvider:
 
 
 class StdSliceSyntheticProvider:
-    __slots__ = ["valobj", "length", "data_ptr", "element_type", "element_size"]
+    __slots__ = [
+        "valobj",
+        "length",
+        "data_ptr",
+        "element_type",
+        "element_size",
+        "is_str",
+    ]
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        self.is_str = self.valobj.GetTypeName() in (
+            "&str",
+            "&mut str",
+            "*const str",
+            "*mut str",
+            "ref$<str>",
+            "ref_mut$<str>",
+            "ptr_const$<str>",
+            "ptr_mut$<str>",
+        )
         self.update()
 
     def num_children(self) -> int:
@@ -1087,6 +1104,9 @@ class StdSliceSyntheticProvider:
         element = self.data_ptr.CreateValueFromAddress(
             "[%s]" % index, address, self.element_type
         )
+
+        if self.is_str:
+            element.SetFormat(eFormatChar)
         return element
 
     def update(self):

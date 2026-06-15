@@ -131,6 +131,25 @@ def register_providers_compatibility():
 
     global RUST_CATEGORY
 
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("u8", False), lldb.SBTypeFormat(lldb.eFormatUnsigned)
+    )
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("unsigned char", False),
+        lldb.SBTypeFormat(lldb.eFormatUnsigned),
+    )
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("i8", False), lldb.SBTypeFormat(lldb.eFormatDecimal)
+    )
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("signed char", False),
+        lldb.SBTypeFormat(lldb.eFormatDecimal),
+    )
+    # does not conflict with rust char, which ends up with the type name `char32_t`
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("char", False), lldb.SBTypeFormat(lldb.eFormatDecimal)
+    )
+
     if LLDBFeature.TypeRecognizers in FEATURE_FLAGS:
         # FIXME: this can be removed once full support for type recognizers is added.
         # This prevents a semi-unfixable regression for CodeLLDB
