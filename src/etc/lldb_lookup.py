@@ -126,23 +126,53 @@ def register_providers_compatibility():
 
     global RUST_CATEGORY
 
-    RUST_CATEGORY.AddTypeFormat(
-        lldb.SBTypeNameSpecifier("u8", False), lldb.SBTypeFormat(lldb.eFormatUnsigned)
+    # Don't format 8-bit builtins as chars
+    unsigned_format = lldb.SBTypeFormat(
+        lldb.eFormatUnsigned,
+        lldb.eTypeOptionCascade
+        | lldb.eTypeOptionSkipPointers
+        | lldb.eTypeOptionSkipReferences,
     )
+
+    RUST_CATEGORY.AddTypeFormat(lldb.SBTypeNameSpecifier("u8", False), unsigned_format)
     RUST_CATEGORY.AddTypeFormat(
         lldb.SBTypeNameSpecifier("unsigned char", False),
-        lldb.SBTypeFormat(lldb.eFormatUnsigned),
+        unsigned_format,
+    )
+
+    signed_format = lldb.SBTypeFormat(
+        lldb.eFormatDecimal,
+        lldb.eTypeOptionCascade
+        | lldb.eTypeOptionSkipPointers
+        | lldb.eTypeOptionSkipReferences,
     )
     RUST_CATEGORY.AddTypeFormat(
         lldb.SBTypeNameSpecifier("i8", False), lldb.SBTypeFormat(lldb.eFormatDecimal)
     )
     RUST_CATEGORY.AddTypeFormat(
         lldb.SBTypeNameSpecifier("signed char", False),
-        lldb.SBTypeFormat(lldb.eFormatDecimal),
+        signed_format,
     )
-    # does not conflict with rust char, which ends up with the type name `char32_t`
-    RUST_CATEGORY.AddTypeFormat(
-        lldb.SBTypeNameSpecifier("char", False), lldb.SBTypeFormat(lldb.eFormatDecimal)
+    # Does not conflict with rust char, which ends up with the type name `char32_t`
+    RUST_CATEGORY.AddTypeFormat(lldb.SBTypeNameSpecifier("char", False), signed_format)
+
+    # Override default `system` `SBTypeCategory` summaries that format char pointers/char arrays as
+    # C strings. We could delete them outright, but that might cause issues when debugging across
+    # FFI boundaries
+
+    # Acquired via lldb command `type summary list -w system`
+    char_ptr_regex = r"^(unsigned )?char ?(\*|\[\])$"
+    char_array_regex = r"^((un)?signed )?char ?\[[0-9]+\]$"
+
+    RUST_CATEGORY.AddTypeSummary(
+        lldb.SBTypeNameSpecifier(char_ptr_regex, True),
+        # we index instead of dereferencing to handle both `T *` and `T[]`
+        lldb.SBTypeSummary.CreateWithSummaryString("${var[0]}"),
+    )
+
+    RUST_CATEGORY.AddTypeSummary(
+        lldb.SBTypeNameSpecifier(char_array_regex, True),
+        lldb.SBTypeSummary.CreateWithSummaryString("${var[]}"),
     )
 
     if LLDBFeature.TypeRecognizers in FEATURE_FLAGS:
