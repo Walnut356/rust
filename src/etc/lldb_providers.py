@@ -2,23 +2,29 @@ from __future__ import annotations
 
 import sys
 from enum import Flag, auto
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Union
 
 from lldb import (
     SBData,
     SBError,
+    eBasicTypeBool,
     eBasicTypeChar32,
     eBasicTypeDouble,
     eBasicTypeFloat,
     eBasicTypeHalf,
+    eBasicTypeInt,
+    eBasicTypeInt128,
     eBasicTypeLong,
     eBasicTypeLongLong,
     eBasicTypeShort,
     eBasicTypeSignedChar,
     eBasicTypeUnsignedChar,
+    eBasicTypeUnsignedInt,
+    eBasicTypeUnsignedInt128,
     eBasicTypeUnsignedLong,
     eBasicTypeUnsignedLongLong,
     eBasicTypeUnsignedShort,
+    eBasicTypeVoid,
     eFormatChar,
 )
 from rust_types import is_tuple_fields
@@ -135,6 +141,130 @@ class LLDBOpaque:
     """
 
 
+def builtin_from_rust_name(
+    name: str, target_or_type: Union[SBTarget, SBType]
+) -> SBType:
+    """Takes a Rust primitive name and maps it to the equivalent SBType. The second parameter must
+    be an `SBTarget` or `SBType` value whose `IsValid()` must return `True` so that we can use it
+    to call `GetBasicType`.
+
+    `usize` and `isize` will be the appropriate size for the target
+
+    Currently handles the following types:
+
+    * `u8`, `u16`, `u32`, `u64`, `u128`, `usize`
+    * `i8`, `i16`, `i32`, `i64`, `i128`, `isize`
+    * `f16`, `f32`, `f64`, `f128` (requires lldb 22+)
+    * `char`
+    * `bool`
+    * `()` (maps to `void`)
+
+    If the name is not in this list, `SBType()` is returned
+    """
+    if name not in {
+        "u8",
+        "u16",
+        "u32",
+        "u64",
+        "u128",
+        "usize",
+        "i8",
+        "i16",
+        "i32",
+        "i64",
+        "i128",
+        "isize",
+        "f16",
+        "f32",
+        "f64",
+        "f128",
+        "char",
+        "bool",
+        "()",
+    }:
+        return SBType()
+
+    if name == "bool":
+        return target_or_type.GetBasicType(eBasicTypeBool)
+    if name == "char":
+        return target_or_type.GetBasicType(eBasicTypeChar32)
+    if name == "()":
+        return target_or_type.GetBasicType(eBasicTypeVoid)
+
+    prefix = name[0]
+    suffix = name[1:]
+
+    if suffix.isdigit():
+        byte_size = int(suffix) // 8
+    else:
+        # we have isize or usize
+        byte_size = (
+            target_or_type.GetBasicType(eBasicTypeInt).GetPointerType().GetByteSize()
+        )
+
+    if prefix == "f":
+        return float_type_for_byte_size(byte_size, target_or_type)
+
+    signed = prefix == "i"
+
+    return int_type_for_byte_size(byte_size, target_or_type, signed=signed)
+
+
+def int_type_for_byte_size(
+    byte_size: int, target_or_type: Union[SBTarget, SBType], *, signed: bool
+) -> SBType:
+    """Infallibly retrieves the C equivalent of a Rust integer type given a size and signedness.
+
+    The second parameter must be an `SBTarget` or `SBType` value whose `IsValid()` must return
+    `True` so that we can use it to call `GetBasicType`."""
+    if signed:
+        basic_types = [
+            eBasicTypeSignedChar,
+            eBasicTypeShort,
+            eBasicTypeLong,
+            eBasicTypeInt,
+            eBasicTypeLongLong,
+            eBasicTypeInt128,
+        ]
+    else:
+        basic_types = [
+            eBasicTypeUnsignedChar,
+            eBasicTypeUnsignedShort,
+            eBasicTypeUnsignedLong,
+            eBasicTypeUnsignedInt,
+            eBasicTypeUnsignedLongLong,
+            eBasicTypeUnsignedInt128,
+        ]
+
+    for b in basic_types:
+        t = target_or_type.GetBasicType(b)
+        if t.GetByteSize() == byte_size:
+            return t
+
+    return SBType()
+
+
+def float_type_for_byte_size(
+    byte_size: int, target_or_type: Union[SBTarget, SBType]
+) -> SBType:
+    basic_types = {
+        16: eBasicTypeHalf,
+        32: eBasicTypeFloat,
+        64: eBasicTypeDouble,
+    }
+    if LLDBFeature.Float128 in FEATURE_FLAGS:
+        from lldb import eBasicTypeFloat128
+
+        basic_types[128] = eBasicTypeFloat128
+
+    b = basic_types.get(byte_size)
+
+    if b is None:
+        return SBType()
+
+    return target_or_type.GetBasicType(b)
+
+
 class ValueBuilder:
     def __init__(self, valobj: SBValue):
         self.valobj = valobj
@@ -143,7 +273,7 @@ class ValueBuilder:
         self.pointer_size = process.GetAddressByteSize()
 
     def from_int(self, name: str, value: int) -> SBValue:
-        type = self.valobj.GetType().GetBasicType(eBasicTypeLong)
+        type = int_type_for_byte_size(8, self.valobj.GetType(), signed=True)
         data = SBData.CreateDataFromSInt64Array(
             self.endianness,
             self.pointer_size,
@@ -152,7 +282,7 @@ class ValueBuilder:
         return self.valobj.CreateValueFromData(name, data, type)
 
     def from_uint(self, name: str, value: int) -> SBValue:
-        type = self.valobj.GetType().GetBasicType(eBasicTypeUnsignedLong)
+        type = int_type_for_byte_size(8, self.valobj.GetType(), signed=False)
         data = SBData.CreateDataFromUInt64Array(
             self.endianness,
             self.pointer_size,
@@ -308,19 +438,11 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
         return target.FindFirstType(arg_name)
 
     # As of LLDB 22, finding primitives based on `FindFirstType` with their rust name no longer
-    # works. Instead, we can look them up by their `eBasicType` equivalent. For usize and isize,
-    # we convert them to their bit-sized counterpart before the lookup
-    if arg_name == "isize" or arg_name == "usize":
-        equivalent = f"{arg_name[0]}{target.GetAddressByteSize() * 8}"
-        return target.GetBasicType(PRIMITIVE_TYPES[equivalent])
+    # works. Instead, we can look them up by their `eBasicType` equivalent.
+    result = builtin_from_rust_name(arg_name, target)
 
-    if (basic_type := PRIMITIVE_TYPES.get(arg_name)) is not None:
-        return target.GetBasicType(basic_type)
-
-    if arg_name == "f128" and LLDBFeature.Float128 in FEATURE_FLAGS:
-        from lldb import eBasicTypeFloat128
-
-        return target.GetBasicType(eBasicTypeFloat128)
+    if result.IsValid():
+        return result
 
     for prefix in MSVC_PTR_PREFIX:
         if arg_name.startswith(prefix):
@@ -1513,9 +1635,7 @@ class StdHashMapSyntheticProvider:
             )
 
         u8_type = self.valobj.GetTarget().GetBasicType(eBasicTypeUnsignedChar)
-        u8_type_size = (
-            self.valobj.GetTarget().GetBasicType(eBasicTypeUnsignedChar).GetByteSize()
-        )
+        u8_type_size = u8_type.GetByteSize()
 
         self.valid_indices = []
         for idx in range(capacity):
@@ -1575,17 +1695,18 @@ class StdRcSyntheticProvider:
 
         self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
 
-        # infallibly gets an unsigned integer type of at least 64 bits. We don't need to worry about
-        # whether or not `usize` is actually smaller than that since we don't ever display the
-        # underlying type to the user anyway
-        usize_type = valobj.GetTarget().GetBasicType(eBasicTypeUnsignedLongLong)
+        # Rc's internal representation is very prone to the `T<u64>`/`T<usize>` issue described in
+        # llvm/llvm-project#196812. Due to this, we use infallible methods to acquire the correct
+        # integer type.
+        ptr_size = valobj.GetType().GetPointerType().GetByteSize()
+        usize_type = int_type_for_byte_size(ptr_size, valobj.GetType(), signed=False)
 
         self.strong = self.ptr.GetChildMemberWithName("strong").Cast(usize_type)
         self.weak = self.ptr.GetChildMemberWithName("weak").Cast(usize_type)
 
-        # If the usize type isn't valid due to llvm/llvm-project#196812, not even the type's fields
-        # will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can infallibly find the strong
-        # and weak values in memory
+        # If we can't retrieve the strong and weak values due to the LLDB bug mentioned above, not
+        # even the type's fields will populate. Luckily, `RcInner` is `#[repr(C)]`, so we can
+        # retrieve the strong and weak values from known memory offsets.
         if not self.strong.IsValid() or not self.weak.IsValid():
             raw_ptr = self.ptr.Cast(usize_type.GetPointerType())
             addr = raw_ptr.GetValueAsAddress()
