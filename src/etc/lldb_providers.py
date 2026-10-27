@@ -1153,10 +1153,8 @@ class StdVecSyntheticProvider:
         self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
 
         if not self.element_type.IsValid():
-            arg_name = next(get_template_args(self.valobj.GetTypeName()))
-
-            self.element_type = resolve_msvc_template_arg(
-                arg_name, self.valobj.GetTarget()
+            self.element_type = (
+                self.valobj.GetType().GetStaticFieldWithName("GENERIC_ARG_0").GetType()
             )
 
         self.element_type_size = self.element_type.GetByteSize()
