@@ -20,6 +20,8 @@ from ..common import (
     ArrayChild,
     ArrayLikeChildren,
     Child,
+    DbgType,
+    DbgValue,
     Result,
     Variable,
     print_error,
@@ -33,6 +35,13 @@ from .from_lldb import (
     type_from_lldb,
     variable_from_lldb,
 )
+
+
+class LldbValue(DbgValue):
+    pass
+
+class LldbType(DbgType):
+    pass
 
 
 def check(var_name: str, breakpoint_idx: int, frame: lldb.SBFrame) -> Result:

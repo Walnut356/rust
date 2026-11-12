@@ -9,6 +9,8 @@ from ..common import (
     TYPES_TESTED,
     VARS_TESTED,
     Child,
+    DbgType,
+    DbgValue,
     Result,
     Variable,
     print_error,
@@ -26,6 +28,13 @@ from .from_gdb import (
     type_from_gdb,
     variable_from_gdb,
 )
+
+
+class GdbValue(DbgValue):
+    pass
+
+class GdbType(DbgType):
+    pass
 
 
 def check(var_name: str):

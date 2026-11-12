@@ -3,10 +3,19 @@ from/into these types, see `./from_lldb.py`"""
 
 import json
 import os
+from abc import ABC
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from enum import Enum
 from pprint import pformat
 from typing import Any, Final, Optional, Union, _eval_type, get_origin
+
+
+class DbgType(ABC):
+    pass
+
+class DbgValue(ABC):
+    pass
+
 
 char = str
 Primitive = Union[int, float, bool, char]
