@@ -42,12 +42,12 @@ class FromLLDB(Exception):
 # It takes a few hundred microseconds at runtime to generate these lists, but it means we never have
 # to upkeep version-specific flags. Since the underlying integers are what are stored and tested
 # against, these don't affect (and are not affected by) the test data.
-_lldb_type_classes = {
+_lldb_type_classes: dict[str, int] = {
     k.removeprefix("eTypeClass"): v
     for k, v in lldb.__dict__.items()
     if k.startswith("eTypeClass")
 }
-_lldb_basic_types = {
+_lldb_basic_types: dict[str, int] = {
     k.removeprefix("eBasicType"): v
     for k, v in lldb.__dict__.items()
     if k.startswith("eBasicType")
