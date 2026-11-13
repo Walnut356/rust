@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 import lldb
 
+from ..check import var_matches
 from ..common import (
     BLESS,
     INPUT_DATA,
@@ -159,7 +160,7 @@ def check(var_name: str, breakpoint_idx: int, frame: lldb.SBFrame) -> Result:
         )
         return Result.Mismatch
 
-    result = var.matches_expected(expected, LldbValue(valobj))
+    result = var_matches(var, expected, LldbValue(valobj))
     # --bless outputs blank breakpoints for any breakpoints with no variables, so we need to account
     # for that here
     if len(VARS_TESTED) <= breakpoint_idx:

@@ -1,5 +1,6 @@
 import gdb
 
+from ..check import var_matches
 from ..common import (
     BLESS,
     INPUT_DATA,
@@ -59,7 +60,7 @@ class GdbType(DbgType):
     __slots__ = ("ty",)
 
     def __init__(self, ty: gdb.Type):
-        self.ty = ty
+        self.ty: gdb.Type = ty
 
     def name(self) -> str:
         return get_type_name(self.ty)
@@ -68,10 +69,10 @@ class GdbType(DbgType):
         return type_from_gdb(self.ty)
 
     def field_types(self) -> list[DbgType]:
-        return [f.type for f in self.ty.fields()]
+        return [GdbType(f.type) for f in self.ty.fields()]
 
     def generics(self) -> list[DbgType]:
-        return get_template_args(self.ty)
+        return [GdbType(t) for t in get_template_args(self.ty)]
 
     def basic_type(self, raw: int | None) -> str:
         return str(raw)
@@ -79,7 +80,7 @@ class GdbType(DbgType):
     def type_class(self, raw: int | None) -> str:
         if raw is None:
             return "<None>"
-        return TypeCode(self.ty.type_class).name
+        return TypeCode(self.ty.code).name
 
 
 def check(var_name: str):
@@ -108,7 +109,7 @@ def check(var_name: str):
         )
         return Result.Mismatch
 
-    result = var.matches_expected(expected, GdbValue(valobj, var_name))
+    result = var_matches(var, expected, GdbValue(valobj, var_name))
     # --bless outputs blank breakpoints for any breakpoints with no variables, so we need to account
     # for that here
     if len(VARS_TESTED) <= breakpoint_idx:
